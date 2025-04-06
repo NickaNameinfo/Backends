@@ -7,13 +7,13 @@ const BUCKET_NAME = "bangmobileapplication";
 
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
-const s3Client = new S3Client({
-  region: "ap-south-1", // Replace with your AWS region
-  credentials: {
-    accessKeyId: "AKIAY55VZUUB7ZDB7JTP",
-    secretAccessKey: "GWRlhht3W4ZNsQ3c5mc2yv839XsG+i6uT6F/1ti2",
-  },
-});
+// const s3Client = new S3Client({
+//   region: "ap-south-1", // Replace with your AWS region
+//   credentials: {
+//     accessKeyId: "AKIAY55VZUUB7ZDB7JTP",
+//     secretAccessKey: "GWRlhht3W4ZNsQ3c5mc2yv839XsG+i6uT6F/1ti2",
+//   },
+// });
 
 var deleteFileFromS3 = async (imgUrl) => {
   try {
