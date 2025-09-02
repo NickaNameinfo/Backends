@@ -25,12 +25,12 @@ const upload = multer({ storage: storage });
 
 const storeRouter = express.Router();
 // storeRouter.route('/create').post(sanitize(),validateBody(schemas.storeDetails),storeController.index);
-storeRouter.route('/create').post(upload.single("storeImage"),storeController.index);
+storeRouter.route('/create').post(storeController.index);
 storeRouter.route('/list').get(sanitize(), storeController.getAllstore);
 storeRouter.route('/list/:id').get(sanitize(), storeController.getstoreById);
 storeRouter.route('/product-list').get(sanitize(), storeController.getAllstoreProduct);
 storeRouter.route('/product/getAllProductById/:id').get(sanitize(), storeController.getProductBystore);
-storeRouter.route('/update').post(upload.single("storeImage"), storeController.storeUpdate);
+storeRouter.route('/update').post(storeController.storeUpdate);
 storeRouter.route('/delete/:id').delete(sanitize(), storeController.storeDelete);
 storeRouter.route('/product-delete').post(sanitize(), storeController.storeProductDelete);
 storeRouter.route('/product-add').post(storeController.storeAddProduct);

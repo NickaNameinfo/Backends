@@ -24,9 +24,8 @@ const productRouter = express.Router();
 productRouter
   .route("/add")
   .post(
-    sanitize(),
+    // sanitize(),
     // jwtStrategy,
-    upload.single("photo"),
     productController.addProduct
   );
 productRouter.route("/getAllproduct").get(sanitize(), productController.index);
@@ -38,7 +37,7 @@ productRouter
   .get(sanitize(), productController.getProductsByOpenStores);
 productRouter
   .route("/update")
-  .post(sanitize(), upload.single("photo"), productController.update);
+  .post(sanitize(), productController.update);
 productRouter
   .route("/getProductByCategory")
   .get(sanitize(), productController.getProductListByCategory);

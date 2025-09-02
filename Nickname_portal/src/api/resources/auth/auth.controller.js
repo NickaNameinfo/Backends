@@ -6,6 +6,21 @@ const speakeasy = require("speakeasy");
 const { validateEmail } = require("./../../../functions");
 const db = require("../../../models");
 const { Op } = require('sequelize'); // Import Sequelize Op for logical operators
+const AWS = require("aws-sdk"); // New import
+const dotenv = require("dotenv"); // New import
+const fs = require("fs"); // New import
+
+// Load environment variables from .env file
+dotenv.config(); // New line
+
+// Configure Cloudflare R2 (S3-compatible API)
+const s3 = new AWS.S3({ // New S3 configuration
+  endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  accessKeyId: process.env.CLOUDFLARE_ACCESS_KEY_ID,
+  secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY,
+  signatureVersion: "v4",
+  region: "auto",
+});
 
 function JWTSign(user, date) {
   const now = new Date();
@@ -111,7 +126,7 @@ module.exports = {
           role: 3, // Filter users with role === 3
         },
       });
-  
+
       if (users && users.length > 0) {
         return res.status(200).json({ success: true, data: users });
       } else {
@@ -121,7 +136,7 @@ module.exports = {
       console.error(err);
       next(err);
     }
-  },  
+  },
 
   async userUpdate(req, res, next) {
     const {
@@ -187,25 +202,25 @@ module.exports = {
           message: "User data is missing.",
         });
       }
-  
+
       // Generate token
       const currentDate = new Date();
       const token = JWTSign(req.user, currentDate);
-  
+
       if (!token) {
         return res.status(500).json({
           success: false,
           message: "Failed to generate token.",
         });
       }
-  
+
       // Set the cookie
       res.cookie("XSRF-token", token, {
         expires: new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000), // Cookie expiration set to 30 days
         httpOnly: true, // Secure the cookie
         secure: config.app.secure, // Use HTTPS if the app is in secure mode
       });
-  
+
       // Send the response
       return res.status(200).json({
         success: true,
@@ -222,7 +237,7 @@ module.exports = {
         message: "An error occurred during login.",
       });
     }
-  },  
+  },
 
   async deleteUserList(req, res, next) {
     db.user
@@ -243,5 +258,72 @@ module.exports = {
       .catch((err) => {
         next(err);
       });
+  },
+
+  /**
+   * Controller to handle file uploads to Cloudflare R2.
+   * This function expects a file to be present in `req.file` (handled by multer middleware).
+   */
+  async uploadFileController(req, res) { // New controller function
+    try {
+      // Check if a file was actually uploaded by multer
+      if (!req.file) {
+        return res.status(400).send({
+          success: false,
+          message: "No file uploaded. Please ensure the 'photo' field is present in the form data.",
+        });
+      }
+
+      const file = req.file; // req.file directly contains the file object
+      const fileName = file.originalname; // Use originalname for the R2 Key
+      const fileContent = file.buffer; // Use the buffer directly for file content
+      const fileMimeType = file.mimetype; // Use the mimetype
+
+      // Parameters for S3 upload
+      const params = {
+        Bucket: process.env.CLOUDFLARE_BUCKET_NAME, // Your R2 bucket name
+        Key: fileName, // The name the file will have in R2
+        Body: fileContent, // The file content from buffer
+        ContentType: fileMimeType, // The MIME type of the file
+      };
+
+      let message = "File uploaded successfully!"; // Default message for new upload
+
+      try {
+          // Check if the file already exists in the bucket
+          await s3.headObject({
+              Bucket: process.env.CLOUDFLARE_BUCKET_NAME,
+              Key: fileName,
+          }).promise();
+          // If headObject succeeds, the file exists, so it will be an update
+          message = "File updated successfully!";
+      } catch (headErr) {
+          // If the error is 'NotFound', it means the file doesn't exist,
+          // so we proceed with the default 'uploaded successfully' message.
+          // For any other error, re-throw it.
+          if (headErr.code !== 'NotFound') {
+              throw headErr;
+          }
+      }
+
+      // Upload the file to R2
+      const data = await s3.upload(params).promise();
+
+      // No need to remove temporary files as memoryStorage is used
+
+      // Send success response with the URL of the uploaded file
+      res.status(200).send({
+        success: true,
+        message: message, // Use the dynamic message
+        fileUrl: `https://pub-5622c42961cc4ef29b17f85c86ab7834.r2.dev/${fileName}`, // The public URL of the uploaded file on R2
+      });
+    } catch (error) {
+      console.error("File Upload Error: ", error);
+      res.status(500).send({
+        success: false,
+        message: "Error uploading file.",
+        error: error.message, // Provide the error message for debugging
+      });
+    }
   },
 };

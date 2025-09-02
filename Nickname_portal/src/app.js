@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser');
 const expressSanitizer = require('express-sanitizer');
 const helmet = require('helmet');
 const rfs = require('rotating-file-stream');
+const multer = require("multer");
 require('./passport');
 
 module.exports = {

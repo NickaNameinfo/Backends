@@ -42,6 +42,7 @@ module.exports = {
   /* Add user api start here................................*/
 
   async addProduct(req, res, next) {
+    console.log(req?.body, "asd7fa0s98d7f9a")
     try {
       const {
         categoryId,
@@ -65,7 +66,8 @@ module.exports = {
         createdId,
         createdType,
         isEnableEcommerce,
-        isEnableCustomize
+        isEnableCustomize,
+        photo
       } = req.body;
       return db.product
         .create({
@@ -87,11 +89,11 @@ module.exports = {
           total: total,
           netPrice: netPrice,
           paymentMode: paymentMode,
-          photo: req?.file ? req?.file?.path : "",
+          photo: photo ? photo : "",
           createdId: createdId,
           createdType: createdType,
-        isEnableEcommerce: isEnableEcommerce,
-        isEnableCustomize: isEnableCustomize
+          isEnableEcommerce: isEnableEcommerce,
+          isEnableCustomize: isEnableCustomize
         })
         .then((product) => {
           res.status(200).json({
@@ -101,10 +103,11 @@ module.exports = {
           });
         })
         .catch(function (err) {
+          console.log(err, "Erro34523r");
           next(err);
         });
     } catch (err) {
-      console.error(err);
+      console.error(err, "689579657");
       throw new RequestError("Error");
     }
   },
@@ -141,7 +144,7 @@ module.exports = {
           include: [
             {
               model: db.store, // Include the associated store
-              attributes: ["id","status"], // Fetch only relevant store fields
+              attributes: ["id", "status"], // Fetch only relevant store fields
               where: { status: 1 }, // Filter active stores
               required: true, // Ensure products without active stores are excluded
             },
@@ -194,7 +197,8 @@ module.exports = {
         createdId,
         createdType,
         isEnableEcommerce,
-        isEnableCustomize
+        isEnableCustomize,
+        photo
       } = req.body;
       db.product
         .findOne({ where: { id: id } })
@@ -224,7 +228,7 @@ module.exports = {
                 total: total ? total : product.total,
                 netPrice: netPrice ? netPrice : product.netPrice,
                 paymentMode: paymentMode ? paymentMode : product.paymentMode,
-                photo: req.file ? req.file.path : product.photo,
+                photo: photo ? photo : product.photo,
                 createdId: createdId ? createdId : product.createdId,
                 createdType: createdType ? createdType : product.createdType,
                 isEnableEcommerce: isEnableEcommerce ? isEnableEcommerce : product.isEnableEcommerce,
@@ -690,7 +694,7 @@ module.exports = {
   async getProductsByOpenStores(req, res, next) {
     try {
       const currentHour = new Date().getHours(); // Get the current hour
-  
+
       // Find all stores that are currently open
       const openStores = await db.store.findAll({
         where: {
@@ -699,9 +703,9 @@ module.exports = {
         },
         attributes: ["id"], // Only need store IDs for filtering
       });
-  
+
       const openStoreIds = openStores.map(store => store.id);
-  
+
       // Query to find products that are sold in the open stores
       const products = await db.product.findAll({
         include: [
@@ -717,7 +721,7 @@ module.exports = {
           },
         ],
       });
-  
+
       if (products.length > 0) { // Check if there are any products
         res.status(200).json({ success: true, data: products });
       } else {
@@ -729,5 +733,5 @@ module.exports = {
     }
   }
 
-  
+
 };

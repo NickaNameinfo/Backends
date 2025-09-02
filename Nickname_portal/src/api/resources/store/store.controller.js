@@ -28,6 +28,8 @@ module.exports = {
         website,
         openTime,
         closeTime,
+        storeImage,
+        verifyDocument
       } = req.body;
       db.store
         .findOne({ where: { id: id ? id : null } })
@@ -60,7 +62,8 @@ module.exports = {
                 website: website ? website : supplier.website,
                 openTime: openTime ? openTime : supplier.openTime,
                 closeTime: closeTime ? closeTime : supplier.closeTime,
-                storeImage: req.file ? req.file.location : supplier.storeImage,
+                storeImage: storeImage ? storeImage : supplier.storeImage,
+                verifyDocument: verifyDocument ? verifyDocument : supplier.verifyDocument,
               },
               { where: { id: id } }
             );
@@ -88,7 +91,8 @@ module.exports = {
             openTime: openTime,
             closeTime: closeTime,
             closeTime: closeTime,
-            storeImage: req?.file ? req?.file?.path : "",
+            storeImage: storeImage ? storeImage : "",
+            verifyDocument: verifyDocument ? verifyDocument : "",
           });
         })
         .then((store) => {
@@ -242,6 +246,21 @@ module.exports = {
   },
 
   async getProductBystore(req, res, next) {
+    const { isEnableEcommerce, isEnableCustomize } = req.query; // Get query parameters
+
+      const productWhere = {}; // Initialize where clause for product model
+
+      // Apply filter for isEnableEcommerce if provided
+      // Assuming frontend sends '1' or '0' as string
+      if (isEnableEcommerce !== undefined) {
+        productWhere.isEnableEcommerce = isEnableEcommerce;
+      }
+
+      // Apply filter for isEnableCustomize if provided
+      // Assuming frontend sends '1' or '0' as string, convert to number as per frontend logic
+      if (isEnableCustomize !== undefined) {
+        productWhere.isEnableCustomize = isEnableCustomize;
+      }
     try {
       db.store_product
         .findAll({
@@ -250,6 +269,7 @@ module.exports = {
             {
               model: db.product,
               where: {
+                ...productWhere,
                 status: 1, // Filter products with status equal to 1
               },
             },
@@ -292,6 +312,8 @@ module.exports = {
         openTime,
         closeTime,
         location,
+        storeImage,
+        verifyDocument
       } = req.body;
       db.store
         .findOne({ where: { id: id } })
@@ -323,7 +345,8 @@ module.exports = {
                 openTime: openTime ? openTime : list?.openTime,
                 closeTime: closeTime ? closeTime : list?.closeTime,
                 location: location ? location : list?.location,
-                storeImage: req?.file ? req?.file?.path : list?.storeImage,
+                storeImage: storeImage ? storeImage : list?.storeImage,
+                verifyDocument: verifyDocument ? verifyDocument : list?.verifyDocument,
               },
               { where: { id: id } }
             );

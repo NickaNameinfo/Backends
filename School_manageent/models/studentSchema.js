@@ -36,6 +36,10 @@ const studentSchema = new mongoose.Schema({
             marksObtained: {
                 type: Number,
                 default: 0
+            },
+            exam: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'exam',
             }
         }
     ],

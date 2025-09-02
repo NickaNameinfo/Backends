@@ -32,6 +32,8 @@ module.exports = {
       // Query the database
       const subscription = await db.subscriptions.findAll({
         where: whereCondition,
+        order: [['createdAt', 'DESC']], // Order by creation date in descending order
+        limit: 1, // Limit to only one record
       });
   
       // Check if the subscription exists
@@ -39,8 +41,8 @@ module.exports = {
         return res.status(404).json({ success: false, message: "Subscription not found" });
       }
   
-      // Return the subscription data
-      res.status(200).json({ success: true, data: subscription });
+      // Return the subscription data (access the first element as limit is 1)
+      res.status(200).json({ success: true, data: subscription[0] });
     } catch (error) {
       next(error);
     }
@@ -50,7 +52,7 @@ module.exports = {
   // Add new subscription
   async addSubscription(req, res, next) {
     try {
-      const { subscriptionType, subscriptionPlan, subscriptionPrice, customerId, status, subscriptionCount } = req.body;
+      const { subscriptionType, subscriptionPlan, subscriptionPrice, customerId, status, subscriptionCount, freeCount } = req.body;
       const subscription = await db.subscriptions.create({
         subscriptionType,
         subscriptionPlan,
@@ -58,6 +60,7 @@ module.exports = {
         customerId,
         status,
         subscriptionCount,
+        freeCount
       });
       res.status(200).json({ success: true, data: subscription });
     } catch (error) {
@@ -68,7 +71,7 @@ module.exports = {
   // Update subscription
   async updateSubscription(req, res, next) {
     try {
-      const { id, subscriptionType, subscriptionPlan, subscriptionPrice, status, subscriptionCount } = req.body;
+      const { id, subscriptionType, subscriptionPlan, subscriptionPrice, status, subscriptionCount, freeCount } = req.body;
       const subscription = await db.subscriptions.findOne({ where: { id: id } });
       if (!subscription) {
         return res.status(404).json({ success: false, message: "Subscription not found" });
@@ -79,6 +82,7 @@ module.exports = {
         subscriptionPrice,
         status,
         subscriptionCount,
+        freeCount
       });
       res.status(200).json({ success: true, message: "Subscription updated successfully" });
     } catch (error) {

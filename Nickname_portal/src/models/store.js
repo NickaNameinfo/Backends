@@ -89,6 +89,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      verifyDocument: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       openTime: {
         type: DataTypes.STRING,
         allowNull: true,

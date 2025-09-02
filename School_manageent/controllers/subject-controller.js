@@ -39,7 +39,7 @@ const allSubjects = async (req, res) => {
         if (subjects.length > 0) {
             res.send(subjects)
         } else {
-            res.send({ message: "No subjects found" });
+            res.send({ data: [] });
         }
     } catch (err) {
         res.status(500).json(err);
@@ -52,7 +52,7 @@ const classSubjects = async (req, res) => {
         if (subjects.length > 0) {
             res.send(subjects)
         } else {
-            res.send({ message: "No subjects found" });
+            res.send({ data: [] });
         }
     } catch (err) {
         res.status(500).json(err);
@@ -65,7 +65,7 @@ const freeSubjectList = async (req, res) => {
         if (subjects.length > 0) {
             res.send(subjects);
         } else {
-            res.send({ message: "No subjects found" });
+            res.send({ data: [] });
         }
     } catch (err) {
         res.status(500).json(err);

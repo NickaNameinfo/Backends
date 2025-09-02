@@ -42,6 +42,17 @@ const {
     deleteFeesByClass
 } = require("../controllers/fees-controller.js");
 
+const {
+    createExam,
+    getExamsBySchool,
+    getExamsByClass,
+    getExamDetail,
+    updateExam,
+    deleteExam,
+    deleteExamsBySchool,
+    deleteExamsByClass
+} = require("../controllers/exam-controller.js");
+
 // Admin
 router.post('/AdminReg', adminRegister);
 router.post('/AdminLogin', adminLogIn);
@@ -142,5 +153,15 @@ router.put("/fees/:id", updateFees);
 router.delete("/fees/:id", deleteFees);
 router.delete("/feesBySchool/:id", deleteFeesBySchool);
 router.delete("/feesByClass/:id", deleteFeesByClass);
+
+// Exams // New section for Exam routes
+router.post("/ExamCreate", createExam);
+router.get("/ExamsBySchool/:id", getExamsBySchool);
+router.get("/ExamsByClass/:id", getExamsByClass);
+router.get("/Exam/:id", getExamDetail);
+router.put("/Exam/:id", updateExam);
+router.delete("/Exam/:id", deleteExam);
+router.delete("/ExamsBySchool/:id", deleteExamsBySchool);
+router.delete("/ExamsByClass/:id", deleteExamsByClass);
 
 module.exports = router;
