@@ -77,7 +77,8 @@ const getStudentDetail = async (req, res) => {
         let student = await Student.findById(req.params.id)
             .populate("school", "schoolName")
             .populate("sclassName", "sclassName")
-            .populate("examResult.subName", "subName")
+            .populate("examResult.subName", "subName") // Corrected line
+            .populate("examResult.exam", "examName") // Corrected line
             .populate("attendance.subName", "subName sessions");
         if (student) {
             student.password = undefined;
@@ -144,7 +145,7 @@ const updateStudent = async (req, res) => {
 }
 
 const updateExamResult = async (req, res) => {
-    const { subName, marksObtained } = req.body;
+    const { subName, marksObtained, exam } = req.body;
 
     try {
         const student = await Student.findById(req.params.id);
@@ -160,7 +161,7 @@ const updateExamResult = async (req, res) => {
         if (existingResult) {
             existingResult.marksObtained = marksObtained;
         } else {
-            student.examResult.push({ subName, marksObtained });
+            student.examResult.push({ subName, marksObtained, exam });
         }
 
         const result = await student.save();
