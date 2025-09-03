@@ -157,27 +157,57 @@ module.exports = {
 
   async getAllstore(req, res, next) {
     try {
-      db.store
-        .findAll({
-          include: [
-            {
-              model: db.area,
-              attributes: ["id", "name"],
-              include: [{ model: db.location, attributes: ["id", "name"] }],
-            },
-            {
-              model: db.product,
-              attributes: ["id", "name", "categoryId"],
-            },
-          ],
-        })
-        .then((list) => {
-          res.status(200).json({ success: true, data: list });
-        })
-        .catch(function (err) {
-          next(err);
-        });
+      // Define all store attributes to be selected
+      const storeAttributes = [
+        'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'storeImage', 'verifyDocument'
+      ];
+
+      // Define attributes for included models (area and location)
+      const areaAttributes = ['id', 'name'];
+      const locationAttributes = ['id', 'name'];
+
+      // Construct the attributes array for the main query, including flattened attributes from includes and the product count
+      const attributesToSelect = [
+        ...storeAttributes,
+        // Flattened area attributes (aliased to avoid conflicts and make them accessible in raw results)
+        [db.Sequelize.col('area.id'), 'area.id'],
+        [db.Sequelize.col('area.name'), 'area.name'],
+        // Flattened location attributes (aliased for raw results)
+        [db.Sequelize.col('area->location.id'), 'area.location.id'],
+        [db.Sequelize.col('area->location.name'), 'area.location.name'],
+        // Add the count of associated products as 'totalProducts'
+        [db.Sequelize.fn('COUNT', db.Sequelize.col('store_products.productId')), 'totalProducts']
+      ];
+
+      // Construct the group by array, including all non-aggregated attributes from the main model and included models
+      const groupByColumns = [
+        ...storeAttributes.map(attr => `store.${attr}`),
+        'area.id', 'area.name',
+        'area->location.id', 'area->location.name'
+      ];
+
+      const list = await db.store.findAll({
+        attributes: attributesToSelect,
+        include: [
+          {
+            model: db.area,
+            attributes: [], // Attributes are selected in the main query's attributes array
+            include: [{ model: db.location, attributes: [] }], // Attributes are selected in the main query's attributes array
+            required: false // Use LEFT JOIN to include stores even if they don't have an associated area/location
+          },
+          {
+            model: db.store_product, // Assuming this is the join table between store and product
+            attributes: [], // Don't select attributes from store_product itself
+            required: false // Use LEFT JOIN to count products, even if a store has none
+          },
+        ],
+        group: groupByColumns,
+        raw: true // Return raw data objects, flattening included model attributes
+      });
+
+      res.status(200).json({ success: true, data: list, count: list.length });
     } catch (err) {
+      console.error(err); // Log the error for debugging
       throw new RequestError("Error");
     }
   },
@@ -186,29 +216,58 @@ module.exports = {
   async getstoreById(req, res, next) {
     try {
       const { id } = req.params;
-      db.store
+
+      // Define all store attributes to be selected
+      const storeAttributes = [
+        'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'storeImage', 'verifyDocument'
+      ];
+
+      // Construct the attributes array for the main query, including flattened attributes from includes and the product count
+      const attributesToSelect = [
+        ...storeAttributes,
+        // Add the count of associated products as 'totalProducts'
+        [db.Sequelize.fn('COUNT', db.Sequelize.col('store_products.productId')), 'totalProducts']
+      ];
+
+      // Construct the group by array, including all non-aggregated attributes from the main model and included models
+      const groupByColumns = [
+        ...storeAttributes.map(attr => `store.${attr}`), ];
+
+      const list = await db.store
         .findOne({
+          attributes: attributesToSelect,
           where: { id: id },
           include: [
             {
               model: db.area,
-              attributes: ["id", "name"],
-              include: [{ model: db.location, attributes: ["id", "name"] }],
+              attributes: [], // Attributes are selected in the main query's attributes array
+              include: [{ model: db.location, attributes: [] }], // Attributes are selected in the main query's attributes array
+              required: false // Use LEFT JOIN
             },
             {
               model: db.user, // Include related user data
-              attributes: ["id"], // Adjust attributes as needed
+              attributes: [], // Attributes are selected in the main query's attributes array
+              required: false // Use LEFT JOIN if user is optional
+            },
+            {
+              model: db.store_product, // Assuming this is the join table between store and product
+              attributes: [], // Don't select attributes from store_product itself
+              required: false // Use LEFT JOIN to count products, even if a store has none
             },
           ],
-        })
-        .then((list) => {
-          res.status(200).json({ success: true, data: list });
-        })
-        .catch(function (err) {
-          next(err);
+          group: groupByColumns,
+          raw: true // Return raw data objects, flattening included model attributes
         });
+
+      if (list) {
+        // findOne with group and raw:true returns an array, so take the first element
+        res.status(200).json({ success: true, data: list });
+      } else {
+        res.status(404).json({ success: false, message: "Store not found" });
+      }
     } catch (err) {
-      throw new RequestError("Error");
+      console.error(err); // Log the error for debugging
+      next(new RequestError("Error"));
     }
   },
 
@@ -235,7 +294,7 @@ module.exports = {
           ],
         })
         .then((list) => {
-          res.status(200).json({ success: true, data: list });
+          res.status(200).json({ success: true, data: list, count: list.length });
         })
         .catch(function (err) {
           next(err);
@@ -248,19 +307,19 @@ module.exports = {
   async getProductBystore(req, res, next) {
     const { isEnableEcommerce, isEnableCustomize } = req.query; // Get query parameters
 
-      const productWhere = {}; // Initialize where clause for product model
+    const productWhere = {}; // Initialize where clause for product model
 
-      // Apply filter for isEnableEcommerce if provided
-      // Assuming frontend sends '1' or '0' as string
-      if (isEnableEcommerce !== undefined) {
-        productWhere.isEnableEcommerce = isEnableEcommerce;
-      }
+    // Apply filter for isEnableEcommerce if provided
+    // Assuming frontend sends '1' or '0' as string
+    if (isEnableEcommerce !== undefined) {
+      productWhere.isEnableEcommerce = isEnableEcommerce;
+    }
 
-      // Apply filter for isEnableCustomize if provided
-      // Assuming frontend sends '1' or '0' as string, convert to number as per frontend logic
-      if (isEnableCustomize !== undefined) {
-        productWhere.isEnableCustomize = isEnableCustomize;
-      }
+    // Apply filter for isEnableCustomize if provided
+    // Assuming frontend sends '1' or '0' as string, convert to number as per frontend logic
+    if (isEnableCustomize !== undefined) {
+      productWhere.isEnableCustomize = isEnableCustomize;
+    }
     try {
       db.store_product
         .findAll({
@@ -276,7 +335,7 @@ module.exports = {
           ],
         })
         .then((list) => {
-          res.status(200).json({ success: true, data: list });
+          res.status(200).json({ success: true, data: list, count: list.length });
         })
         .catch(function (err) {
           next(err);
@@ -354,7 +413,6 @@ module.exports = {
           throw new RequestError("No data found", 409);
         })
         .then((store) => {
-          console.log(store, "store3423453");
           res
             .status(200)
             .json({ success: true, msg: "Updated Successfully", data: store });
@@ -436,8 +494,18 @@ module.exports = {
 
       const productIds = products.map((product) => product.id);
 
+      // Check if productIds is empty
+      if (productIds.length === 0) {
+        return res.status(200).json({ success: true, data: [], count: 0 });
+      }
+
       // Find all stores associated with those products via store_product
       const stores = await db.store.findAll({
+        attributes: [
+          'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'storeImage', 'verifyDocument',
+          // Add the count of associated products as 'totalProducts'
+          [db.Sequelize.fn('COUNT', db.Sequelize.col('store_products.productId')), 'totalProducts']
+        ],
         include: [
           {
             model: db.store_product,
@@ -447,12 +515,17 @@ module.exports = {
               },
             },
             attributes: [], // No need to fetch attributes from store_product
+            required: true // Ensures only stores with matching products are returned (INNER JOIN)
           },
         ],
-        group: ["store.id"], // Group to avoid duplicates
+        group: [
+          // All non-aggregated attributes from the 'attributes' array must be in the 'group' clause
+          'store.id', 'store.storename', 'store.status', 'store.storeaddress', 'store.storedesc', 'store.ownername', 'store.owneraddress', 'store.email', 'store.phone', 'store.accountNo', 'store.accountHolderName', 'store.IFSC', 'store.bankName', 'store.branch', 'store.adharCardNo', 'store.panCardNo', 'store.GSTNo', 'store.areaId', 'store.website', 'store.openTime', 'store.closeTime', 'store.storeImage', 'store.verifyDocument'
+        ],
+        raw: true // Return raw data to easily access the 'totalProducts' alias
       });
 
-      res.status(200).json({ success: true, data: stores });
+      res.status(200).json({ success: true, data: stores, count: stores.length });
     } catch (err) {
       console.log(err, "err978707");
       next(new RequestError("Error"));
@@ -490,40 +563,41 @@ module.exports = {
         where: productWhere,
         attributes: ["id"],
       });
-      console.log("Filtered Products:", products);
 
       const productIds = products.map((product) => product.id);
-      console.log("Product IDs:", productIds);
 
       // Check if productIds is empty
       if (productIds.length === 0) {
-        return res.status(200).json({ success: true, data: [] });
+        return res.status(200).json({ success: true, data: [], count: 0 });
       }
 
-      // Find all stores that are associated with those products
+      // Find all stores that are associated with those products and get their product count
       const stores = await db.store.findAll({
+        attributes: [
+          'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'location', 'storeImage', 'verifyDocument',
+          // Add the count of associated products as 'totalProducts'
+          [db.Sequelize.fn('COUNT', db.Sequelize.col('store_products.productId')), 'totalProducts']
+        ],
         include: [
           {
             model: db.store_product,
+            attributes: [], // No need to fetch attributes from store_product itself
             where: {
               productId: {
                 [db.Sequelize.Op.in]: productIds,
               },
             },
-            attributes: [], // No need to fetch attributes from store_product
-            include: [
-              {
-                model: db.product,
-                attributes: [], // No need to fetch attributes from product again
-              },
-            ],
+            required: true // Ensures only stores with matching products are returned (INNER JOIN)
           },
         ],
-        group: ["store.id"], // Group to avoid duplicates
+        group: [
+          // All non-aggregated attributes from the 'attributes' array must be in the 'group' clause
+          'store.id', 'store.storename', 'store.status', 'store.storeaddress', 'store.storedesc', 'store.ownername', 'store.owneraddress', 'store.email', 'store.phone', 'store.accountNo', 'store.accountHolderName', 'store.IFSC', 'store.bankName', 'store.branch', 'store.adharCardNo', 'store.panCardNo', 'store.GSTNo', 'store.areaId', 'store.website', 'store.openTime', 'store.closeTime', 'store.location', 'store.storeImage', 'store.verifyDocument'
+        ],
+        raw: true // Return raw data to easily access the 'totalProducts' alias
       });
-      console.log("Stores:", stores);
 
-      res.status(200).json({ success: true, data: stores });
+      res.status(200).json({ success: true, data: stores, count: stores.length });
     } catch (err) {
       console.log(err, "Error");
       next(new RequestError("Error"));
@@ -533,8 +607,35 @@ module.exports = {
   async getOpenStores(req, res, next) {
     try {
       const currentHour = new Date().getHours(); // Get the current hour
+
+      // Define all store attributes to be selected
+      const storeAttributes = [
+        'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'storeImage', 'verifyDocument'
+      ];
+
+      // Construct the attributes array for the main query, including flattened attributes from includes and the product count
+      const attributesToSelect = [
+        ...storeAttributes,
+        // Flattened area attributes (aliased to avoid conflicts and make them accessible in raw results)
+        [db.Sequelize.col('area.id'), 'area.id'],
+        [db.Sequelize.col('area.name'), 'area.name'],
+        // Flattened location attributes (aliased for raw results)
+        [db.Sequelize.col('area->location.id'), 'area.location.id'],
+        [db.Sequelize.col('area->location.name'), 'area.location.name'],
+        // Add the count of associated products as 'totalProducts'
+        [db.Sequelize.fn('COUNT', db.Sequelize.col('store_products.productId')), 'totalProducts']
+      ];
+
+      // Construct the group by array, including all non-aggregated attributes from the main model and included models
+      const groupByColumns = [
+        ...storeAttributes.map(attr => `store.${attr}`),
+        'area.id', 'area.name',
+        'area->location.id', 'area->location.name'
+      ];
+
       // Query to find open stores based on current hour
       const openStores = await db.store.findAll({
+        attributes: attributesToSelect,
         where: {
           openTime: { [db.Sequelize.Op.lte]: currentHour }, // Store must be open at or before the current hour
           closeTime: { [db.Sequelize.Op.gte]: currentHour }, // Store must close at or after the current hour
@@ -542,19 +643,26 @@ module.exports = {
         include: [
           {
             model: db.area,
-            attributes: ["id", "name"],
-            include: [{ model: db.location, attributes: ["id", "name"] }],
+            attributes: [], // Attributes are selected in the main query's attributes array
+            include: [{ model: db.location, attributes: [] }], // Attributes are selected in the main query's attributes array
+            required: false // Use LEFT JOIN
+          },
+          {
+            model: db.store_product, // Assuming this is the join table between store and product
+            attributes: [], // Don't select attributes from store_product itself
+            required: false // Use LEFT JOIN to count products, even if a store has none
           },
         ],
+        group: groupByColumns,
+        raw: true // Return raw data objects, flattening included model attributes
       });
 
       if (openStores.length > 0) {
-        // Check if there are any open stores
-        res.status(200).json({ success: true, data: openStores });
+        res.status(200).json({ success: true, data: openStores, count: openStores.length });
       } else {
         res
           .status(404)
-          .json({ success: false, message: "No open stores found" });
+          .json({ success: false, message: "No open stores found", count: 0 });
       }
     } catch (err) {
       console.error(err, "Error");

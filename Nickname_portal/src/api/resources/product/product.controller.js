@@ -161,7 +161,7 @@ module.exports = {
           ],
         })
         .then((products) => {
-          res.status(200).json({ success: true, data: products });
+          res.status(200).json({ success: true, data: products, count: products.length });
         })
         .catch(function (err) {
           next(err);

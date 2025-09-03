@@ -52,7 +52,7 @@ module.exports = {
           include: [{ model: db.addresses }],
         })
         .then((list) => {
-          res.status(200).json({ success: true, data: list });
+          res.status(200).json({ success: true, data: list, count : list.length  });
         })
         .catch(function (err) {
           next(err);
@@ -122,7 +122,7 @@ module.exports = {
         };
       });
 
-      res.status(200).json({ success: true, data: ordersWithProducts });
+      res.status(200).json({ success: true, data: ordersWithProducts, count: ordersWithProducts.length  });
     } catch (err) {
       next(err);
     }
@@ -153,7 +153,7 @@ module.exports = {
         ),
       }));
 
-      res.status(200).json({ success: true, data: ordersWithProducts });
+      res.status(200).json({ success: true, data: ordersWithProducts, count: ordersWithProducts.length   });
     } catch (err) {
       next(err);
     }
@@ -168,7 +168,7 @@ module.exports = {
           include: [{ model: db.addresses, include: [{ model: db.carts }] }],
         })
         .then((list) => {
-          res.status(200).json({ success: true, order: list });
+          res.status(200).json({ success: true, order: list, count: list.length });
         })
         .catch(function (err) {
           next(err);

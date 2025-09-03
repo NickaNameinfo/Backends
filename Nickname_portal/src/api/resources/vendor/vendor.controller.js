@@ -180,7 +180,7 @@ module.exports = {
           ],
         })
         .then((list) => {
-          res.status(200).json({ success: true, data: list });
+          res.status(200).json({ success: true, data: list, count: list.length  });
         })
         .catch(function (err) {
           next(err);
@@ -253,7 +253,7 @@ module.exports = {
           ],
         })
         .then((list) => {
-          res.status(200).json({ success: true, data: list });
+          res.status(200).json({ success: true, data: list, count: list.length   });
         })
         .catch(function (err) {
           next(err);
@@ -276,7 +276,7 @@ module.exports = {
           ],
         })
         .then((list) => {
-          res.status(200).json({ success: true, data: list });
+          res.status(200).json({ success: true, data: list, count: list.length    });
         })
         .catch(function (err) {
           next(err);
