@@ -271,6 +271,70 @@ const removeStudentAttendance = async (req, res) => {
     }
 };
 
+const getAllStudentsAttendanceBySubject = async (req, res) => {
+    const subNameId = req.params.id; // Subject ID is expected in req.params.id
+    const dateParam = req.params.date; // Date string (e.g., "YYYY-MM-DD")
+
+    try {
+        // Convert the date parameter to a Date object for the start and end of the day
+        const startOfDay = new Date(dateParam);
+        startOfDay.setUTCHours(0, 0, 0, 0); // Set to midnight UTC for the given date
+
+        const endOfDay = new Date(dateParam);
+        endOfDay.setUTCHours(23, 59, 59, 999); // Set to the last millisecond of the day UTC
+
+        // Find all students who have an attendance record matching both subject and date
+        const students = await Student.find({
+            attendance: {
+                $elemMatch: { // Use $elemMatch to apply both conditions to the same array element
+                    subName: subNameId,
+                    date: {
+                        $gte: startOfDay,
+                        $lte: endOfDay // Use $lte to include all records within the day
+                    }
+                }
+            }
+        })
+        if (students.length === 0) {
+            return res.send({ message: "No students found with attendance for this subject and date." });
+        }
+
+        // Filter the attendance array for each student to only include the specified subject and date
+        // This step is necessary because $elemMatch only ensures existence, not that only matching elements are returned.
+        const studentsWithFilteredAttendance = students.map(student => {
+            const filteredAttendance = student.attendance.filter(
+                entry =>
+                    entry.subName && // Ensure subName is populated and exists
+                    entry.subName._id.toString() === subNameId &&
+                    new Date(entry.date).toDateString() === startOfDay.toDateString() // Compare only the date part
+            );
+
+            // Only return the student object if they have matching attendance records after filtering
+            if (filteredAttendance.length > 0) {
+                return {
+                    _id: student._id,
+                    name: student.name,
+                    rollNum: student.rollNum,
+                    school: student.school, // Populated school object
+                    sclassName: student.sclassName, // Populated sclassName object
+                    attendance: filteredAttendance,
+                };
+            }
+            return null; // If no matching attendance, return null
+        }).filter(Boolean); // Remove any null entries (students who didn't have matching attendance after filtering)
+
+        if (studentsWithFilteredAttendance.length === 0) {
+            return res.send({ message: "No students found with attendance for this subject and date after detailed filtering." });
+        }
+
+        res.send(studentsWithFilteredAttendance);
+
+    } catch (error) {
+        console.error(error); // Log the error for debugging
+        res.status(500).json(error);
+    }
+};
+
 
 module.exports = {
     studentRegister,
@@ -288,4 +352,5 @@ module.exports = {
     clearAllStudentsAttendance,
     removeStudentAttendanceBySubject,
     removeStudentAttendance,
+    getAllStudentsAttendanceBySubject, // Add the new function to exports
 };
