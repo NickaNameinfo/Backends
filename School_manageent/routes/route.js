@@ -53,6 +53,7 @@ const {
     deleteExamsBySchool,
     deleteExamsByClass
 } = require("../controllers/exam-controller.js");
+const { savePushToken, sendPushNotification } = require('../controllers/push-notification-controller.js');
 
 // Admin
 router.post('/AdminReg', adminRegister);
@@ -165,5 +166,7 @@ router.put("/Exam/:id", updateExam);
 router.delete("/Exam/:id", deleteExam);
 router.delete("/ExamsBySchool/:id", deleteExamsBySchool);
 router.delete("/ExamsByClass/:id", deleteExamsByClass);
+router.post('/savePushToken', savePushToken);
+router.post('/sendPushNotification', sendPushNotification);
 
 module.exports = router;
