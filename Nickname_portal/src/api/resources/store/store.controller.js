@@ -1,4 +1,5 @@
 const db = require("../../../models");
+const { haversineDistance, extractLatLngFromGoogleMapsUrl } = require("../../../utils/distance"); // Import the distance utility
 
 module.exports = {
   /* Add user api start here................................*/
@@ -31,6 +32,7 @@ module.exports = {
         storeImage,
         verifyDocument
       } = req.body;
+      console.log(status, "fas7df09as");
       db.store
         .findOne({ where: { id: id ? id : null } })
         .then((supplier) => {
@@ -70,7 +72,7 @@ module.exports = {
           }
           return db.store.create({
             storename: storename ? storename : null,
-            status: status ? status : null,
+            status: status ? status : 0,
             storeaddress: storeaddress ? storeaddress : null,
             storedesc: storedesc ? storedesc : null,
             ownername: ownername ? ownername : null,
@@ -84,13 +86,12 @@ module.exports = {
             bankName: bankName ? bankName : null,
             branch: branch ? branch : null,
             adharCardNo: adharCardNo ? adharCardNo : null,
-            panCardNo: panCardNo,
-            GSTNo: GSTNo,
+            panCardNo: panCardNo ? panCardNo : null, // Added null check
+            GSTNo: GSTNo ? GSTNo : null, // Added null check
             areaId: areaId,
-            website: website,
-            openTime: openTime,
-            closeTime: closeTime,
-            closeTime: closeTime,
+            website: website ? website : null, // Added null check
+            openTime: openTime ? openTime : null, // Added null check
+            closeTime: closeTime ? closeTime : null, // Added null check and removed duplicate
             storeImage: storeImage ? storeImage : "",
             verifyDocument: verifyDocument ? verifyDocument : "",
           });
@@ -156,26 +157,27 @@ module.exports = {
   },
 
   async getAllstore(req, res, next) {
+    const { currentLocation } = req.query;
+    let userLat, userLon;
+    if (currentLocation) {
+      const coords = currentLocation.split(',').map(Number);
+      if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+        userLat = coords[0];
+        userLon = coords[1];
+      } else {
+        console.warn("Invalid currentLocation format:", currentLocation);
+      }
+    }
+
     try {
       // Define all store attributes to be selected
       const storeAttributes = [
-        'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'storeImage', 'verifyDocument'
+        'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'storeImage', 'verifyDocument', 'location'
       ];
-
-      // Define attributes for included models (area and location)
-      const areaAttributes = ['id', 'name'];
-      const locationAttributes = ['id', 'name'];
 
       // Construct the attributes array for the main query, including flattened attributes from includes and the product count
       const attributesToSelect = [
         ...storeAttributes,
-        // Flattened area attributes (aliased to avoid conflicts and make them accessible in raw results)
-        [db.Sequelize.col('area.id'), 'area.id'],
-        [db.Sequelize.col('area.name'), 'area.name'],
-        // Flattened location attributes (aliased for raw results)
-        [db.Sequelize.col('area->location.id'), 'area.location.id'],
-        [db.Sequelize.col('area->location.name'), 'area.location.name'],
-        // Add the count of associated products as 'totalProducts'
         [db.Sequelize.fn('COUNT', db.Sequelize.col('store_products.productId')), 'totalProducts']
       ];
 
@@ -205,7 +207,19 @@ module.exports = {
         raw: true // Return raw data objects, flattening included model attributes
       });
 
-      res.status(200).json({ success: true, data: list, count: list.length });
+      // Calculate distance for each store if currentLocation is provided
+      const storesWithDistance = list.map(store => {
+        if (userLat !== undefined && userLon !== undefined && store.location) {
+          const storeCoords = extractLatLngFromGoogleMapsUrl(store.location);
+          if (storeCoords) {
+            const distance = haversineDistance(userLat, userLon, storeCoords.lat, storeCoords.lon);
+            return { ...store, distance: parseFloat(distance.toFixed(2)) }; // Round to 2 decimal places
+          }
+        }
+        return { ...store, distance: null }; // Set distance to null if not calculable
+      });
+
+      res.status(200).json({ success: true, data: storesWithDistance, count: storesWithDistance.length });
     } catch (err) {
       console.error(err); // Log the error for debugging
       throw new RequestError("Error");
@@ -214,14 +228,24 @@ module.exports = {
 
   //Get by Id
   async getstoreById(req, res, next) {
+    const { currentLocation } = req.query;
+    const { id } = req.params;
+    let userLat, userLon;
+    if (currentLocation) {
+      const coords = currentLocation.split(',').map(Number);
+      if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+        userLat = coords[0];
+        userLon = coords[1];
+      } else {
+        console.warn("Invalid currentLocation format:", currentLocation);
+      }
+    }
     try {
-      const { id } = req.params;
 
       // Define all store attributes to be selected
       const storeAttributes = [
-        'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'storeImage', 'verifyDocument'
+        'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'storeImage', 'verifyDocument', 'location'
       ];
-
       // Construct the attributes array for the main query, including flattened attributes from includes and the product count
       const attributesToSelect = [
         ...storeAttributes,
@@ -231,7 +255,7 @@ module.exports = {
 
       // Construct the group by array, including all non-aggregated attributes from the main model and included models
       const groupByColumns = [
-        ...storeAttributes.map(attr => `store.${attr}`), ];
+        ...storeAttributes.map(attr => `store.${attr}`),];
 
       const list = await db.store
         .findOne({
@@ -259,9 +283,23 @@ module.exports = {
           raw: true // Return raw data objects, flattening included model attributes
         });
 
-      if (list) {
-        // findOne with group and raw:true returns an array, so take the first element
-        res.status(200).json({ success: true, data: list });
+      // Calculate distance for the store if currentLocation is provided
+      let storeWithDistance = list ? { ...list } : null; // Initialize with a copy of list or null
+
+      if (storeWithDistance && userLat !== undefined && userLon !== undefined && storeWithDistance.location) {
+        const storeCoords = extractLatLngFromGoogleMapsUrl(storeWithDistance.location);
+        if (storeCoords) {
+          const distance = haversineDistance(userLat, userLon, storeCoords.lat, storeCoords.lon);
+          storeWithDistance.distance = parseFloat(distance.toFixed(2)); // Round to 2 decimal places
+        } else {
+          storeWithDistance.distance = null; // Set distance to null if not calculable
+        }
+      } else if (storeWithDistance) {
+        storeWithDistance.distance = null; // Set distance to null if not calculable
+      }
+
+      if (storeWithDistance) {
+        res.status(200).json({ success: true, data: storeWithDistance });
       } else {
         res.status(404).json({ success: false, message: "Store not found" });
       }
@@ -474,6 +512,17 @@ module.exports = {
   },
 
   async getAllStoresByCategories(req, res, next) {
+    const { currentLocation } = req.query;
+    let userLat, userLon;
+    if (currentLocation) {
+      const coords = currentLocation.split(',').map(Number);
+      if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+        userLat = coords[0];
+        userLon = coords[1];
+      } else {
+        console.warn("Invalid currentLocation format:", currentLocation);
+      }
+    }
     try {
       const { categoryIds } = req.query; // Assuming the category IDs are passed as a query parameter
 
@@ -525,7 +574,18 @@ module.exports = {
         raw: true // Return raw data to easily access the 'totalProducts' alias
       });
 
-      res.status(200).json({ success: true, data: stores, count: stores.length });
+      const storesWithDistance = stores.map(store => {
+        if (userLat !== undefined && userLon !== undefined && store.location) {
+          const storeCoords = extractLatLngFromGoogleMapsUrl(store.location);
+          if (storeCoords) {
+            const distance = haversineDistance(userLat, userLon, storeCoords.lat, storeCoords.lon);
+            return { ...store, distance: parseFloat(distance.toFixed(2)) }; // Round to 2 decimal places
+          }
+        }
+        return { ...store, distance: null }; // Set distance to null if not calculable
+      });
+
+      res.status(200).json({ success: true, data: storesWithDistance, count: stores.length });
     } catch (err) {
       console.log(err, "err978707");
       next(new RequestError("Error"));
@@ -533,6 +593,17 @@ module.exports = {
   },
 
   async getAllStoresByFilters(req, res, next) {
+    const { currentLocation } = req.query;
+    let userLat, userLon;
+    if (currentLocation) {
+      const coords = currentLocation.split(',').map(Number);
+      if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+        userLat = coords[0];
+        userLon = coords[1];
+      } else {
+        console.warn("Invalid currentLocation format:", currentLocation);
+      }
+    }
     try {
       const { search, paymentModes } = req.query; // Extract filters from query parameters
 
@@ -597,7 +668,18 @@ module.exports = {
         raw: true // Return raw data to easily access the 'totalProducts' alias
       });
 
-      res.status(200).json({ success: true, data: stores, count: stores.length });
+      const storesWithDistance = stores.map(store => {
+        if (userLat !== undefined && userLon !== undefined && store.location) {
+          const storeCoords = extractLatLngFromGoogleMapsUrl(store.location);
+          if (storeCoords) {
+            const distance = haversineDistance(userLat, userLon, storeCoords.lat, storeCoords.lon);
+            return { ...store, distance: parseFloat(distance.toFixed(2)) }; // Round to 2 decimal places
+          }
+        }
+        return { ...store, distance: null }; // Set distance to null if not calculable
+      });
+
+      res.status(200).json({ success: true, data: storesWithDistance, count: stores.length });
     } catch (err) {
       console.log(err, "Error");
       next(new RequestError("Error"));
@@ -605,24 +687,28 @@ module.exports = {
   },
 
   async getOpenStores(req, res, next) {
+    const { currentLocation } = req.query;
+    let userLat, userLon;
+    if (currentLocation) {
+      const coords = currentLocation.split(',').map(Number);
+      if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+        userLat = coords[0];
+        userLon = coords[1];
+      } else {
+        console.warn("Invalid currentLocation format:", currentLocation);
+      }
+    }
     try {
       const currentHour = new Date().getHours(); // Get the current hour
 
       // Define all store attributes to be selected
       const storeAttributes = [
-        'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'storeImage', 'verifyDocument'
+        'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'storeImage', 'verifyDocument', 'location'
       ];
 
       // Construct the attributes array for the main query, including flattened attributes from includes and the product count
       const attributesToSelect = [
         ...storeAttributes,
-        // Flattened area attributes (aliased to avoid conflicts and make them accessible in raw results)
-        [db.Sequelize.col('area.id'), 'area.id'],
-        [db.Sequelize.col('area.name'), 'area.name'],
-        // Flattened location attributes (aliased for raw results)
-        [db.Sequelize.col('area->location.id'), 'area.location.id'],
-        [db.Sequelize.col('area->location.name'), 'area.location.name'],
-        // Add the count of associated products as 'totalProducts'
         [db.Sequelize.fn('COUNT', db.Sequelize.col('store_products.productId')), 'totalProducts']
       ];
 
@@ -657,8 +743,19 @@ module.exports = {
         raw: true // Return raw data objects, flattening included model attributes
       });
 
+      const storesWithDistance = openStores.map(store => {
+        if (userLat !== undefined && userLon !== undefined && store.location) {
+          const storeCoords = extractLatLngFromGoogleMapsUrl(store.location);
+          if (storeCoords) {
+            const distance = haversineDistance(userLat, userLon, storeCoords.lat, storeCoords.lon);
+            return { ...store, distance: parseFloat(distance.toFixed(2)) }; // Round to 2 decimal places
+          }
+        }
+        return { ...store, distance: null }; // Set distance to null if not calculable
+      });
+
       if (openStores.length > 0) {
-        res.status(200).json({ success: true, data: openStores, count: openStores.length });
+        res.status(200).json({ success: true, data: storesWithDistance, count: openStores.length });
       } else {
         res
           .status(404)

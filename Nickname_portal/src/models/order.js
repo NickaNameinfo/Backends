@@ -11,11 +11,13 @@ module.exports = (sequelize, DataTypes) => {
     qty :  DataTypes.INTEGER,
     storeId: DataTypes.INTEGER,
     customization : DataTypes.STRING,
+    cutomerDeliveryDate: DataTypes.DATE,
   }, {});
   Order.associate = function(models) {
     // associations can be defined here
     models.orders.hasMany(models.addresses, { foreignKey: 'orderId' });
-    models.orders.hasMany(models.product, { foreignKey: 'id' });
+    models.orders.hasMany(models.product, { foreignKey: 'id' }); // Removed problematic association
+    models.orders.belongsTo(models.user, { foreignKey: 'custId' });
     // models.orders.hasMany(models.payment, { foreignKey: 'orderCreationId' });  
 
   };

@@ -14,6 +14,7 @@ module.exports = {
         qty,
         storeId,
         customization,
+        cutomerDeliveryDate,
       } = req.body;
       db.user
         .findOne({ where: { id: customerId } })
@@ -28,6 +29,7 @@ module.exports = {
               qty: qty,
               storeId: storeId,
               customization: customization ? customization : null,
+              cutomerDeliveryDate: cutomerDeliveryDate ? cutomerDeliveryDate : null,
             });
           }
           return res.status(500).json({ errors: ["User is not found"] });
@@ -134,8 +136,8 @@ module.exports = {
         where: { storeId: req.params.id },
         order: [["createdAt", "DESC"]],
         include: [
-          { model: db.addresses },
-          { model: db.users }, // Include user details
+          // { model: db.addresses }, // Temporarily removed for debugging
+          { model: db.user }, // Include user details
         ],
       });
 
