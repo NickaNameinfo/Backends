@@ -1,8 +1,9 @@
 const Notice = require('../models/noticeSchema.js');
 const PushToken = require('../models/pushTokenSchema');
-const { sendPushNotification } = require('./push-notification-controller');
+const { sendPushNotificationHelper } = require('./push-notification-controller');
 
 const noticeCreate = async (req, res) => {
+    console.log(req.body, "asdf7as90d8f7")
     try {
         const notice = new Notice({
             ...req.body,
@@ -20,9 +21,7 @@ const noticeCreate = async (req, res) => {
             const notificationBody = req.body.description;
             const notificationData = { noticeId: result._id.toString(), type: "new_notice" };
 
-            // Call the sendPushNotification function (assuming it's in the same controller or imported)
-            // Note: This is a simplified call. In a real app, you might want to handle the response/errors more robustly.
-            await sendPushNotification({ body: { recipientTokens, title: notificationTitle, body: notificationBody, data: notificationData } }, {});
+            await sendPushNotificationHelper(recipientTokens, notificationTitle, notificationBody, notificationData);
         }
 
         res.send(result)
