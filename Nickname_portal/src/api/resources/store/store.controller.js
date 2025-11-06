@@ -562,7 +562,6 @@ module.exports = {
               productId: {
                 [db.Sequelize.Op.in]: productIds,
               },
-              status: "1",
             },
             attributes: [], // No need to fetch attributes from store_product
             required: true // Ensures only stores with matching products are returned (INNER JOIN)
@@ -572,7 +571,10 @@ module.exports = {
           // All non-aggregated attributes from the 'attributes' array must be in the 'group' clause
           'store.id', 'store.storename', 'store.status', 'store.storeaddress', 'store.storedesc', 'store.ownername', 'store.owneraddress', 'store.email', 'store.phone', 'store.accountNo', 'store.accountHolderName', 'store.IFSC', 'store.bankName', 'store.branch', 'store.adharCardNo', 'store.panCardNo', 'store.GSTNo', 'store.areaId', 'store.website', 'store.openTime', 'store.closeTime', 'store.storeImage', 'store.verifyDocument'
         ],
-        raw: true // Return raw data to easily access the 'totalProducts' alias
+        raw: true, // Return raw data to easily access the 'totalProducts' alias
+        where: {
+          status: "1",
+        },
       });
 
       const storesWithDistance = stores.map(store => {
@@ -658,7 +660,6 @@ module.exports = {
               productId: {
                 [db.Sequelize.Op.in]: productIds,
               },
-              status: "1",
             },
             required: true // Ensures only stores with matching products are returned (INNER JOIN)
           },
@@ -667,7 +668,10 @@ module.exports = {
           // All non-aggregated attributes from the 'attributes' array must be in the 'group' clause
           'store.id', 'store.storename', 'store.status', 'store.storeaddress', 'store.storedesc', 'store.ownername', 'store.owneraddress', 'store.email', 'store.phone', 'store.accountNo', 'store.accountHolderName', 'store.IFSC', 'store.bankName', 'store.branch', 'store.adharCardNo', 'store.panCardNo', 'store.GSTNo', 'store.areaId', 'store.website', 'store.openTime', 'store.closeTime', 'store.location', 'store.storeImage', 'store.verifyDocument'
         ],
-        raw: true // Return raw data to easily access the 'totalProducts' alias
+        raw: true, // Return raw data to easily access the 'totalProducts' alias,
+        where: {
+          status: "1",
+        },
       });
 
       const storesWithDistance = stores.map(store => {
