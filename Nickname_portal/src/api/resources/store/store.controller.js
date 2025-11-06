@@ -227,6 +227,76 @@ module.exports = {
     }
   },
 
+  async adminGetAllstore(req, res, next) {
+    const { currentLocation } = req.query;
+    let userLat, userLon;
+    if (currentLocation) {
+      const coords = currentLocation.split(',').map(Number);
+      if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+        userLat = coords[0];
+        userLon = coords[1];
+      } else {
+        console.warn("Invalid currentLocation format:", currentLocation);
+      }
+    }
+
+    try {
+      // Define all store attributes to be selected
+      const storeAttributes = [
+        'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'storeImage', 'verifyDocument', 'location'
+      ];
+
+      // Construct the attributes array for the main query, including flattened attributes from includes and the product count
+      const attributesToSelect = [
+        ...storeAttributes,
+        [db.Sequelize.fn('COUNT', db.Sequelize.col('store_products.productId')), 'totalProducts']
+      ];
+
+      // Construct the group by array, including all non-aggregated attributes from the main model and included models
+      const groupByColumns = [
+        ...storeAttributes.map(attr => `store.${attr}`),
+        'area.id', 'area.name',
+        'area->location.id', 'area->location.name'
+      ];
+
+      const list = await db.store.findAll({
+        attributes: attributesToSelect,
+        include: [
+          {
+            model: db.area,
+            attributes: [], // Attributes are selected in the main query's attributes array
+            include: [{ model: db.location, attributes: [] }], // Attributes are selected in the main query's attributes array
+            required: false // Use LEFT JOIN to include stores even if they don't have an associated area/location
+          },
+          {
+            model: db.store_product, // Assuming this is the join table between store and product
+            attributes: [], // Don't select attributes from store_product itself
+            required: false // Use LEFT JOIN to count products, even if a store has none
+          },
+        ],
+        group: groupByColumns,
+        raw: true // Return raw data objects, flattening included model attributes
+      });
+
+      // Calculate distance for each store if currentLocation is provided
+      const storesWithDistance = list.map(store => {
+        if (userLat !== undefined && userLon !== undefined && store.location) {
+          const storeCoords = extractLatLngFromGoogleMapsUrl(store.location);
+          if (storeCoords) {
+            const distance = haversineDistance(userLat, userLon, storeCoords.lat, storeCoords.lon);
+            return { ...store, distance: parseFloat(distance.toFixed(2)) }; // Round to 2 decimal places
+          }
+        }
+        return { ...store, distance: null }; // Set distance to null if not calculable
+      });
+
+      res.status(200).json({ success: true, data: storesWithDistance, count: storesWithDistance.length });
+    } catch (err) {
+      console.error(err); // Log the error for debugging
+      throw new RequestError("Error");
+    }
+  },
+
   //Get by Id
   async getstoreById(req, res, next) {
     const { currentLocation } = req.query;

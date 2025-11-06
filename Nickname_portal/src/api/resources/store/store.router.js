@@ -27,6 +27,7 @@ const storeRouter = express.Router();
 // storeRouter.route('/create').post(sanitize(),validateBody(schemas.storeDetails),storeController.index);
 storeRouter.route('/create').post(storeController.index);
 storeRouter.route('/list').get(sanitize(), storeController.getAllstore);
+storeRouter.route('/admin/list').get(sanitize(), storeController.adminGetAllstore);
 storeRouter.route('/list/:id').get(sanitize(), storeController.getstoreById);
 storeRouter.route('/product-list').get(sanitize(), storeController.getAllstoreProduct);
 storeRouter.route('/product/getAllProductById/:id').get(sanitize(), storeController.getProductBystore);
