@@ -190,6 +190,7 @@ module.exports = {
 
       const list = await db.store.findAll({
         attributes: attributesToSelect,
+        where: { status: 1 }, // Add this line to filter by status = 1
         include: [
           {
             model: db.area,
@@ -488,7 +489,6 @@ module.exports = {
 
   async storeProductDelete(req, res, next) {
     try {
-      console.log("hi", req.body);
       db.store_product
         .findOne({ where: { id: req.body.id } })
         .then((data) => {
@@ -562,6 +562,7 @@ module.exports = {
               productId: {
                 [db.Sequelize.Op.in]: productIds,
               },
+              status: 1,
             },
             attributes: [], // No need to fetch attributes from store_product
             required: true // Ensures only stores with matching products are returned (INNER JOIN)
@@ -657,6 +658,7 @@ module.exports = {
               productId: {
                 [db.Sequelize.Op.in]: productIds,
               },
+              status: 1,
             },
             required: true // Ensures only stores with matching products are returned (INNER JOIN)
           },
@@ -725,6 +727,7 @@ module.exports = {
         where: {
           openTime: { [db.Sequelize.Op.lte]: currentHour }, // Store must be open at or before the current hour
           closeTime: { [db.Sequelize.Op.gte]: currentHour }, // Store must close at or after the current hour
+          status: 1,
         },
         include: [
           {

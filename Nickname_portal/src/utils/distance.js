@@ -20,8 +20,8 @@ function extractLatLngFromGoogleMapsUrl(url) {
     if (!url || typeof url !== 'string') {
       return null;
     }
-    // Regex to find coordinates in the format /@lat,lon,zoomz/
-    const match = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*),(\d+\.?\d*)z/);
+    // Regex to find coordinates in the format /@lat,lon,zoom[m|z]?/
+    const match = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*),(\d+\.?\d*)(?:m|z)?/);
     if (match && match.length >= 3) {
       const lat = parseFloat(match[1]);
       const lon = parseFloat(match[2]);
