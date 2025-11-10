@@ -61,6 +61,7 @@
     "rotating-file-stream": "^1.4.1",
     "sequelize": "^5.22.5",
     "sequelize-cli": "^5.5.0",
+    "sharp": "^0.34.5",
     "speakeasy": "^2.0.0",
     "stack-trace": "0.0.10"
   }

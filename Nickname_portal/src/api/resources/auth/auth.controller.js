@@ -8,6 +8,7 @@ const db = require("../../../models");
 const { Op } = require('sequelize'); // Import Sequelize Op for logical operators
 const AWS = require("aws-sdk"); // New import
 const dotenv = require("dotenv"); // New import
+const sharp = require("sharp"); // Import sharp for image processing
 const fs = require("fs"); // New import
 
 // Load environment variables from .env file
@@ -276,8 +277,26 @@ module.exports = {
 
       const file = req.file; // req.file directly contains the file object
       const fileName = file.originalname; // Use originalname for the R2 Key
-      const fileContent = file.buffer; // Use the buffer directly for file content
+      let fileContent = file.buffer; // Use the buffer directly for file content
       const fileMimeType = file.mimetype; // Use the mimetype
+
+      // If the file is an image, compress it
+      if (fileMimeType.startsWith("image/")) {
+        try {
+          fileContent = await sharp(fileContent)
+            .resize({ width: 800 }) // Resize image to a max width of 800px
+            .jpeg({ quality: 80 }) // Compress JPEG images to 80% quality
+            .png({ quality: 80 }) // Compress PNG images to 80% quality
+            .toBuffer();
+        } catch (sharpError) {
+          console.error("Image compression error:", sharpError);
+          return res.status(500).send({
+            success: false,
+            message: "Error compressing image.",
+            error: sharpError.message,
+          });
+        }
+      }
 
       // Parameters for S3 upload
       const params = {
