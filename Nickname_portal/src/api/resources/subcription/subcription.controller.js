@@ -52,7 +52,7 @@ module.exports = {
   // Add new subscription
   async addSubscription(req, res, next) {
     try {
-      const { subscriptionType, subscriptionPlan, subscriptionPrice, customerId, status, subscriptionCount, freeCount } = req.body;
+      const { subscriptionType, subscriptionPlan, subscriptionPrice, customerId, status, subscriptionCount, freeCount, paymentId } = req.body;
       const subscription = await db.subscriptions.create({
         subscriptionType,
         subscriptionPlan,
@@ -60,7 +60,8 @@ module.exports = {
         customerId,
         status,
         subscriptionCount,
-        freeCount
+        freeCount,
+        paymentId
       });
       res.status(200).json({ success: true, data: subscription });
     } catch (error) {
@@ -71,7 +72,7 @@ module.exports = {
   // Update subscription
   async updateSubscription(req, res, next) {
     try {
-      const { id, subscriptionType, subscriptionPlan, subscriptionPrice, status, subscriptionCount, freeCount } = req.body;
+      const { id, subscriptionType, subscriptionPlan, subscriptionPrice, status, subscriptionCount, freeCount, paymentId } = req.body;
       const subscription = await db.subscriptions.findOne({ where: { id: id } });
       if (!subscription) {
         return res.status(404).json({ success: false, message: "Subscription not found" });
@@ -82,7 +83,8 @@ module.exports = {
         subscriptionPrice,
         status,
         subscriptionCount,
-        freeCount
+        freeCount,
+        paymentId
       });
       res.status(200).json({ success: true, message: "Subscription updated successfully" });
     } catch (error) {
