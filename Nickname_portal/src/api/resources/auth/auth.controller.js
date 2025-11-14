@@ -267,6 +267,18 @@ module.exports = {
    */
   async uploadFileController(req, res) { // New controller function
     try {
+      // 1. Get the store name from the request body or query parameters
+      // *** ASSUMING storeName is passed in the request body ***
+      const storeName = req.body.storeName;
+
+      // Basic validation for the required dynamic directory/store name
+      if (!storeName) {
+        return res.status(400).send({
+          success: false,
+          message: "Store name is missing. Cannot create file directory.",
+        });
+      }
+
       // Check if a file was actually uploaded by multer
       if (!req.file) {
         return res.status(400).send({
@@ -276,9 +288,13 @@ module.exports = {
       }
 
       const file = req.file; // req.file directly contains the file object
-      const fileName = file.originalname; // Use originalname for the R2 Key
+      const originalFileName = file.originalname; // Original file name
       let fileContent = file.buffer; // Use the buffer directly for file content
       const fileMimeType = file.mimetype; // Use the mimetype
+
+      // 2. Construct the R2 Key with the dynamic directory
+      // The key format will be: [storeName]/[originalFileName]
+      const r2Key = `${storeName}/${originalFileName}`;
 
       // If the file is an image, compress it
       if (fileMimeType.startsWith("image/")) {
@@ -301,7 +317,7 @@ module.exports = {
       // Parameters for S3 upload
       const params = {
         Bucket: process.env.CLOUDFLARE_BUCKET_NAME, // Your R2 bucket name
-        Key: fileName, // The name the file will have in R2
+        Key: r2Key, // *** USE THE NEW DYNAMIC KEY ***
         Body: fileContent, // The file content from buffer
         ContentType: fileMimeType, // The MIME type of the file
       };
@@ -312,7 +328,7 @@ module.exports = {
           // Check if the file already exists in the bucket
           await s3.headObject({
               Bucket: process.env.CLOUDFLARE_BUCKET_NAME,
-              Key: fileName,
+              Key: r2Key, // *** USE THE NEW DYNAMIC KEY ***
           }).promise();
           // If headObject succeeds, the file exists, so it will be an update
           message = "File updated successfully!";
@@ -330,11 +346,11 @@ module.exports = {
 
       // No need to remove temporary files as memoryStorage is used
 
-      // Send success response with the URL of the uploaded file
+      // 3. Update the file URL to use the new R2 Key
       res.status(200).send({
         success: true,
         message: message, // Use the dynamic message
-        fileUrl: `https://pub-5622c42961cc4ef29b17f85c86ab7834.r2.dev/${fileName}`, // The public URL of the uploaded file on R2
+        fileUrl: `https://pub-5622c42961cc4ef29b17f85c86ab7834.r2.dev/${r2Key}`, // The public URL of the uploaded file on R2
       });
     } catch (error) {
       console.error("File Upload Error: ", error);
