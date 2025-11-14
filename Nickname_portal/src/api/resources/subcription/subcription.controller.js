@@ -23,6 +23,9 @@ module.exports = {
       // Build the "where" condition
       const whereCondition = {
         customerId: id,
+        paymentId: {
+          [db.Sequelize.Op.ne]: "TEMP_PAYMENT_ID_DEV", // Exclude records with paymentId equal to TEMP_PAYMENT_ID_DEV
+        },
       };
   
       if (subscriptionType) {
