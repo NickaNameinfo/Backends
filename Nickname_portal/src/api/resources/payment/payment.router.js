@@ -4,12 +4,12 @@ const { sanitize } = require("../../../middleware/sanitizer");
 const { jwtStrategy } = require("../../../middleware/strategy");
 
 const paymentRouter = express.Router();
-paymentRouter.route("/orders").post(sanitize(), paymentController.orderDetails);
+paymentRouter.route("/orders").post(paymentController.orderDetails);
 paymentRouter
   .route("/orderlist")
-  .post(sanitize(), paymentController.findOrderList);
+  .post(paymentController.findOrderList);
 paymentRouter
   .route("/getAllPayment")
-  .get(sanitize(), jwtStrategy, paymentController.getAllPayment);
+  .get(jwtStrategy, paymentController.getAllPayment);
 
 module.exports = { paymentRouter };

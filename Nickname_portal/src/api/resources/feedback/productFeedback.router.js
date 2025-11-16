@@ -7,26 +7,26 @@ const productFeedbackRouter = express.Router();
 // Create new product feedback
 productFeedbackRouter
   .route("/create")
-  .post(sanitize(), productFeedbackController.addProductFeedback);
+  .post(productFeedbackController.addProductFeedback);
 
 // Get all product feedback
 productFeedbackRouter
   .route("/list")
-  .get(sanitize(), productFeedbackController.getProductFeedback);
+  .get(productFeedbackController.getProductFeedback);
 
 // Get product feedback by productId
 productFeedbackRouter
   .route("/list/:id")
-  .get(sanitize(), productFeedbackController.getProductFeedbackById);
+  .get(productFeedbackController.getProductFeedbackById);
 
 // Update product feedback
 productFeedbackRouter
   .route("/update")
-  .post(sanitize(), productFeedbackController.updateProductFeedback);
+  .post(productFeedbackController.updateProductFeedback);
 
 // Delete product feedback
 productFeedbackRouter
   .route("/delete/:id")
-  .delete(sanitize(), productFeedbackController.deleteProductFeedback);
+  .delete(productFeedbackController.deleteProductFeedback);
 
 module.exports = { productFeedbackRouter };

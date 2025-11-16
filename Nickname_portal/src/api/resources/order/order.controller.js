@@ -5,7 +5,7 @@ module.exports = {
   async index(req, res, next) {
     try {
       const {
-        customerId,
+        custId,
         paymentmethod,
         orderId,
         deliveryAddress,
@@ -15,21 +15,24 @@ module.exports = {
         storeId,
         customization,
         cutomerDeliveryDate,
+        orderType
       } = req.body;
       db.user
-        .findOne({ where: { id: customerId } })
+        .findOne({ where: { id: custId } })
         .then((p) => {
           if (p) {
             return db.orders.create({
-              custId: customerId,
+              custId: custId,
               number: orderId,
               grandtotal: grandTotal,
               paymentmethod: paymentmethod,
               productIds: productIds,
               qty: qty,
               storeId: storeId,
+              orderType: orderType,
               customization: customization ? customization : null,
               cutomerDeliveryDate: cutomerDeliveryDate ? cutomerDeliveryDate : null,
+              deliveryAddress: Object.values(deliveryAddress).join(", "),
             });
           }
           return res.status(500).json({ errors: ["User is not found"] });
@@ -38,7 +41,7 @@ module.exports = {
           res.status(200).json({ success: true, data: success });
         })
         .catch(function (err) {
-          console.log(err);
+          console.log(err, "sdfasd");
           res.status(500).json({ errors: ["Error adding cart"] });
         });
     } catch (err) {
