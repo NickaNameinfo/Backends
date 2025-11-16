@@ -67,7 +67,9 @@ module.exports = {
         createdType,
         isEnableEcommerce,
         isEnableCustomize,
-        photo
+        isBooking,
+        photo,
+        serviceType
       } = req.body;
       return db.product
         .create({
@@ -93,7 +95,9 @@ module.exports = {
           createdId: createdId,
           createdType: createdType,
           isEnableEcommerce: isEnableEcommerce,
-          isEnableCustomize: isEnableCustomize
+          isEnableCustomize: isEnableCustomize,
+          isBooking: isBooking,
+          serviceType: serviceType
         })
         .then((product) => {
           res.status(200).json({
@@ -198,7 +202,9 @@ module.exports = {
         createdType,
         isEnableEcommerce,
         isEnableCustomize,
-        photo
+        isBooking,
+        photo,
+        serviceType
       } = req.body;
       db.product
         .findOne({ where: { id: id } })
@@ -232,7 +238,9 @@ module.exports = {
                 createdId: createdId ? createdId : product.createdId,
                 createdType: createdType ? createdType : product.createdType,
                 isEnableEcommerce: isEnableEcommerce ? isEnableEcommerce : product.isEnableEcommerce,
-                isEnableCustomize: isEnableCustomize ? isEnableCustomize : product.isEnableCustomize
+                isEnableCustomize: isEnableCustomize ? isEnableCustomize : product.isEnableCustomize,
+                isBooking: isBooking ? isBooking : product.isBooking,
+                serviceType: serviceType ? serviceType : product.serviceType
               },
               { where: { id: product.id } }
             );

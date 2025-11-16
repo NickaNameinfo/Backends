@@ -59,6 +59,8 @@ module.exports = (sequelize, DataTypes) => {
       createdType: DataTypes.TEXT,
       isEnableEcommerce: DataTypes.TEXT,
       isEnableCustomize: DataTypes.TEXT,
+      isBooking: DataTypes.TEXT,
+      serviceType: DataTypes.TEXT,
     },
     {}
   );
