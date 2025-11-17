@@ -280,7 +280,6 @@ module.exports = {
         raw: true, // Return raw data to easily access the 'totalProducts' alias,
         where: {
           status: "1",
-          serviceType: "Service"
         },
       });
 
@@ -1039,8 +1038,7 @@ module.exports = {
         ],
         raw: true, // Return raw data to easily access the 'totalProducts' alias,
         where: {
-          status: "1",
-          serviceType: "Service"
+          status: "1"
         },
       });
 
