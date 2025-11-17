@@ -43,7 +43,7 @@ module.exports = {
           if (order) {
             return db.payment
               .create({
-                custId: custId,
+                custId: Number(custId),
                 amount: order.amount / 100,
                 orderCreationId: orderCreationId,
                 razorpayPaymentId: razorpayPaymentId,

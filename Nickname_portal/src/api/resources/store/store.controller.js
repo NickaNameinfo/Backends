@@ -226,6 +226,81 @@ module.exports = {
       throw new RequestError("Error");
     }
   },
+  async getServiceAllstore(req, res, next) {
+    const { currentLocation } = req.query;
+    let userLat, userLon;
+    if (currentLocation) {
+      const coords = currentLocation.split(',').map(Number);
+      if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+        userLat = coords[0];
+        userLon = coords[1];
+      } else {
+        console.warn("Invalid currentLocation format:", currentLocation);
+      }
+    }
+    try {
+      // Find all product IDs that match the filters
+      const products = await db.product.findAll({
+        where: {
+          serviceType : "Service"
+        },
+        attributes: ["id"],
+      });
+
+      const productIds = products.map((product) => product.id);
+
+      // Check if productIds is empty
+      if (productIds.length === 0) {
+        return res.status(200).json({ success: true, data: [], count: 0 });
+      }
+
+      // Find all stores that are associated with those products and get their product count
+      const stores = await db.store.findAll({
+        attributes: [
+          'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'location', 'storeImage', 'verifyDocument',
+          // Add the count of associated products as 'totalProducts'
+          [db.Sequelize.fn('COUNT', db.Sequelize.col('store_products.productId')), 'totalProducts']
+        ],
+        include: [
+          {
+            model: db.store_product,
+            attributes: [], // No need to fetch attributes from store_product itself
+            where: {
+              productId: {
+                [db.Sequelize.Op.in]: productIds,
+              },
+            },
+            required: true // Ensures only stores with matching products are returned (INNER JOIN)
+          },
+        ],
+        group: [
+          // All non-aggregated attributes from the 'attributes' array must be in the 'group' clause
+          'store.id', 'store.storename', 'store.status', 'store.storeaddress', 'store.storedesc', 'store.ownername', 'store.owneraddress', 'store.email', 'store.phone', 'store.accountNo', 'store.accountHolderName', 'store.IFSC', 'store.bankName', 'store.branch', 'store.adharCardNo', 'store.panCardNo', 'store.GSTNo', 'store.areaId', 'store.website', 'store.openTime', 'store.closeTime', 'store.location', 'store.storeImage', 'store.verifyDocument'
+        ],
+        raw: true, // Return raw data to easily access the 'totalProducts' alias,
+        where: {
+          status: "1",
+          serviceType: "Service"
+        },
+      });
+
+      const storesWithDistance = stores.map(store => {
+        if (userLat !== undefined && userLon !== undefined && store.location) {
+          const storeCoords = extractLatLngFromGoogleMapsUrl(store.location);
+          if (storeCoords) {
+            const distance = haversineDistance(userLat, userLon, storeCoords.lat, storeCoords.lon);
+            return { ...store, distance: parseFloat(distance.toFixed(2)) }; // Round to 2 decimal places
+          }
+        }
+        return { ...store, distance: null }; // Set distance to null if not calculable
+      });
+
+      res.status(200).json({ success: true, data: storesWithDistance, count: stores.length });
+    } catch (err) {
+      console.log(err, "Error");
+      next(new RequestError("Error"));
+    }
+  },
 
   async adminGetAllstore(req, res, next) {
     const { currentLocation } = req.query;
@@ -454,6 +529,46 @@ module.exports = {
     }
   },
 
+  async getAdminProductBystore(req, res, next) {
+    const { isEnableEcommerce, isEnableCustomize } = req.query; // Get query parameters
+
+    const productWhere = {}; // Initialize where clause for product model
+
+    // Apply filter for isEnableEcommerce if provided
+    // Assuming frontend sends '1' or '0' as string
+    if (isEnableEcommerce !== undefined) {
+      productWhere.isEnableEcommerce = isEnableEcommerce;
+    }
+
+    // Apply filter for isEnableCustomize if provided
+    // Assuming frontend sends '1' or '0' as string, convert to number as per frontend logic
+    if (isEnableCustomize !== undefined) {
+      productWhere.isEnableCustomize = isEnableCustomize;
+    }
+    try {
+      db.store_product
+        .findAll({
+          where: { supplierId: req.params.id },
+          include: [
+            {
+              model: db.product,
+              where: {
+                ...productWhere,
+              },
+            },
+          ],
+        })
+        .then((list) => {
+          res.status(200).json({ success: true, data: list, count: list.length });
+        })
+        .catch(function (err) {
+          next(err);
+        });
+    } catch (err) {
+      throw new RequestError("Error");
+    }
+  },
+
   async storeUpdate(req, res, next) {
     try {
       const {
@@ -665,6 +780,90 @@ module.exports = {
     }
   },
 
+  async getServiceAllStoresByCategories(req, res, next) {
+    const { currentLocation } = req.query;
+    let userLat, userLon;
+    if (currentLocation) {
+      const coords = currentLocation.split(',').map(Number);
+      if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+        userLat = coords[0];
+        userLon = coords[1];
+      } else {
+        console.warn("Invalid currentLocation format:", currentLocation);
+      }
+    }
+    try {
+      const { categoryIds } = req.query; // Assuming the category IDs are passed as a query parameter
+
+      // Parse categoryIds into an array if it's a string (e.g., "1,2,3")
+      const categoryArray = Array.isArray(categoryIds)
+        ? categoryIds
+        : categoryIds.split(",");
+
+      // Find all product IDs that belong to the specified categories
+      const products = await db.product.findAll({
+        where: {
+          categoryId: {
+            [db.Sequelize.Op.in]: categoryArray,
+          },
+          serviceType: "Service"
+        },
+        attributes: ["id"],
+      });
+
+      const productIds = products.map((product) => product.id);
+
+      // Check if productIds is empty
+      if (productIds.length === 0) {
+        return res.status(200).json({ success: true, data: [], count: 0 });
+      }
+
+      // Find all stores associated with those products via store_product
+      const stores = await db.store.findAll({
+        attributes: [
+          'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'storeImage', 'verifyDocument',
+          // Add the count of associated products as 'totalProducts'
+          [db.Sequelize.fn('COUNT', db.Sequelize.col('store_products.productId')), 'totalProducts']
+        ],
+        include: [
+          {
+            model: db.store_product,
+            where: {
+              productId: {
+                [db.Sequelize.Op.in]: productIds,
+              },
+            },
+            attributes: [], // No need to fetch attributes from store_product
+            required: true // Ensures only stores with matching products are returned (INNER JOIN)
+          },
+        ],
+        group: [
+          // All non-aggregated attributes from the 'attributes' array must be in the 'group' clause
+          'store.id', 'store.storename', 'store.status', 'store.storeaddress', 'store.storedesc', 'store.ownername', 'store.owneraddress', 'store.email', 'store.phone', 'store.accountNo', 'store.accountHolderName', 'store.IFSC', 'store.bankName', 'store.branch', 'store.adharCardNo', 'store.panCardNo', 'store.GSTNo', 'store.areaId', 'store.website', 'store.openTime', 'store.closeTime', 'store.storeImage', 'store.verifyDocument'
+        ],
+        raw: true, // Return raw data to easily access the 'totalProducts' alias
+        where: {
+          status: "1",
+        },
+      });
+
+      const storesWithDistance = stores.map(store => {
+        if (userLat !== undefined && userLon !== undefined && store.location) {
+          const storeCoords = extractLatLngFromGoogleMapsUrl(store.location);
+          if (storeCoords) {
+            const distance = haversineDistance(userLat, userLon, storeCoords.lat, storeCoords.lon);
+            return { ...store, distance: parseFloat(distance.toFixed(2)) }; // Round to 2 decimal places
+          }
+        }
+        return { ...store, distance: null }; // Set distance to null if not calculable
+      });
+
+      res.status(200).json({ success: true, data: storesWithDistance, count: stores.length });
+    } catch (err) {
+      next(new RequestError("Error"));
+    }
+  },
+
   async getAllStoresByFilters(req, res, next) {
     const { currentLocation } = req.query;
     let userLat, userLon;
@@ -741,6 +940,107 @@ module.exports = {
         raw: true, // Return raw data to easily access the 'totalProducts' alias,
         where: {
           status: "1",
+          serviceType: "Service"
+        },
+      });
+
+      const storesWithDistance = stores.map(store => {
+        if (userLat !== undefined && userLon !== undefined && store.location) {
+          const storeCoords = extractLatLngFromGoogleMapsUrl(store.location);
+          if (storeCoords) {
+            const distance = haversineDistance(userLat, userLon, storeCoords.lat, storeCoords.lon);
+            return { ...store, distance: parseFloat(distance.toFixed(2)) }; // Round to 2 decimal places
+          }
+        }
+        return { ...store, distance: null }; // Set distance to null if not calculable
+      });
+
+      res.status(200).json({ success: true, data: storesWithDistance, count: stores.length });
+    } catch (err) {
+      console.log(err, "Error");
+      next(new RequestError("Error"));
+    }
+  },
+
+  async getServiceAllStoresByFilters(req, res, next) {
+    const { currentLocation } = req.query;
+    let userLat, userLon;
+    if (currentLocation) {
+      const coords = currentLocation.split(',').map(Number);
+      if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+        userLat = coords[0];
+        userLon = coords[1];
+      } else {
+        console.warn("Invalid currentLocation format:", currentLocation);
+      }
+    }
+    try {
+      const { search, paymentModes } = req.query; // Extract filters from query parameters
+
+      // Initialize filter conditions for products
+      const productWhere = {};
+      const paymentModeArray = paymentModes
+        ? paymentModes.split(",").map((pm) => parseInt(pm.trim(), 10))
+        : []; // Ensure integers
+
+      // Apply filter by product name if provided
+      if (search) {
+        productWhere.name = {
+          [db.Sequelize.Op.like]: `%${search}%`,
+        };
+      }
+
+      // Apply filter by payment modes if provided
+      if (paymentModes) {
+        productWhere.paymentMode = {
+          [db.Sequelize.Op.or]: paymentModeArray.map((mode) => ({
+            [db.Sequelize.Op.like]: `%${mode}%`,
+          })),
+        };
+      }
+
+      productWhere.serviceType = "Service";
+
+      // Find all product IDs that match the filters
+      const products = await db.product.findAll({
+        where: productWhere,
+        attributes: ["id"],
+      });
+
+      const productIds = products.map((product) => product.id);
+
+      // Check if productIds is empty
+      if (productIds.length === 0) {
+        return res.status(200).json({ success: true, data: [], count: 0 });
+      }
+
+      // Find all stores that are associated with those products and get their product count
+      const stores = await db.store.findAll({
+        attributes: [
+          'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'location', 'storeImage', 'verifyDocument',
+          // Add the count of associated products as 'totalProducts'
+          [db.Sequelize.fn('COUNT', db.Sequelize.col('store_products.productId')), 'totalProducts']
+        ],
+        include: [
+          {
+            model: db.store_product,
+            attributes: [], // No need to fetch attributes from store_product itself
+            where: {
+              productId: {
+                [db.Sequelize.Op.in]: productIds,
+              },
+            },
+            required: true // Ensures only stores with matching products are returned (INNER JOIN)
+          },
+        ],
+        group: [
+          // All non-aggregated attributes from the 'attributes' array must be in the 'group' clause
+          'store.id', 'store.storename', 'store.status', 'store.storeaddress', 'store.storedesc', 'store.ownername', 'store.owneraddress', 'store.email', 'store.phone', 'store.accountNo', 'store.accountHolderName', 'store.IFSC', 'store.bankName', 'store.branch', 'store.adharCardNo', 'store.panCardNo', 'store.GSTNo', 'store.areaId', 'store.website', 'store.openTime', 'store.closeTime', 'store.location', 'store.storeImage', 'store.verifyDocument'
+        ],
+        raw: true, // Return raw data to easily access the 'totalProducts' alias,
+        where: {
+          status: "1",
+          serviceType: "Service"
         },
       });
 
