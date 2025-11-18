@@ -587,8 +587,8 @@ module.exports = {
       // Define product filter conditions
       const productWhere = {
         [Op.or]: [
-          { name: { [db.Sequelize.Op.like]: search } },
-          { slug: { [db.Sequelize.Op.like]: search } },
+          { name: { [Op.like]: search } },
+          { slug: { [Op.like]: search } },
         ],
       };
 
