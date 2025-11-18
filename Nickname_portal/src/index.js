@@ -35,26 +35,14 @@ app.use((error, req, res, next) => {
   }
   error.status = error.status || 500;
   res.status(error.status);
-  let contype = req.headers["content-type"];
-  var json = !(!contype || contype.indexOf("application/json") !== 0);
-  if (json) {
-    return res.json({ errors: error.errorList });
-  } else {
-    res.render(error.status.toString(), { layout: null });
-  }
-});
-
-// kue.init();
-/* Database Connection */
-db.sequelize
-  .authenticate()
-  .then(function () {
-    console.log("Nice! Database looks fine");
-    scheduler.init();
-  })
-  .catch(function (err) {
-    console.log(err, "Something went wrong with the Database Update!");
+  
+  // Always return JSON for API endpoints
+  return res.json({ 
+    success: false,
+    errors: error.errorList || [error.message || "An error occurred"],
+    status: error.status
   });
+});
 
 /* Start Listening service */
 app.listen(PORT, () => {

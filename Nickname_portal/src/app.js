@@ -10,6 +10,7 @@ const helmet = require('helmet');
 const rfs = require('rotating-file-stream');
 const multer = require("multer");
 require('./passport');
+const compression = require('compression'); // Add to package.json
 
 module.exports = {
     setup: (config) => {
@@ -41,6 +42,9 @@ module.exports = {
             while (s.length < (size || 2)) { s = "0" + s; }
             return s;
         };
+        
+        // Add compression middleware
+        app.use(compression());
         
         return app;
     }

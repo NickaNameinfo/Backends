@@ -32,7 +32,6 @@ module.exports = {
         storeImage,
         verifyDocument
       } = req.body;
-      console.log(status, "fas7df09as");
       db.store
         .findOne({ where: { id: id ? id : null } })
         .then((supplier) => {
@@ -242,7 +241,7 @@ module.exports = {
       // Find all product IDs that match the filters
       const products = await db.product.findAll({
         where: {
-          serviceType : "Service"
+          serviceType: "Service"
         },
         attributes: ["id"],
       });
@@ -731,31 +730,30 @@ module.exports = {
       if (productIds.length === 0) {
         return res.status(200).json({ success: true, data: [], count: 0 });
       }
-
-      // Find all stores associated with those products via store_product
+      // Find all stores that are associated with those products and get their product count
       const stores = await db.store.findAll({
         attributes: [
-          'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'storeImage', 'verifyDocument',
+          'id', 'storename', 'status', 'storeaddress', 'storedesc', 'ownername', 'owneraddress', 'email', 'phone', 'accountNo', 'accountHolderName', 'IFSC', 'bankName', 'branch', 'adharCardNo', 'panCardNo', 'GSTNo', 'areaId', 'website', 'openTime', 'closeTime', 'location', 'storeImage', 'verifyDocument',
           // Add the count of associated products as 'totalProducts'
           [db.Sequelize.fn('COUNT', db.Sequelize.col('store_products.productId')), 'totalProducts']
         ],
         include: [
           {
             model: db.store_product,
+            attributes: [], // No need to fetch attributes from store_product itself
             where: {
               productId: {
                 [db.Sequelize.Op.in]: productIds,
               },
             },
-            attributes: [], // No need to fetch attributes from store_product
             required: true // Ensures only stores with matching products are returned (INNER JOIN)
           },
         ],
         group: [
           // All non-aggregated attributes from the 'attributes' array must be in the 'group' clause
-          'store.id', 'store.storename', 'store.status', 'store.storeaddress', 'store.storedesc', 'store.ownername', 'store.owneraddress', 'store.email', 'store.phone', 'store.accountNo', 'store.accountHolderName', 'store.IFSC', 'store.bankName', 'store.branch', 'store.adharCardNo', 'store.panCardNo', 'store.GSTNo', 'store.areaId', 'store.website', 'store.openTime', 'store.closeTime', 'store.storeImage', 'store.verifyDocument'
+          'store.id', 'store.storename', 'store.status', 'store.storeaddress', 'store.storedesc', 'store.ownername', 'store.owneraddress', 'store.email', 'store.phone', 'store.accountNo', 'store.accountHolderName', 'store.IFSC', 'store.bankName', 'store.branch', 'store.adharCardNo', 'store.panCardNo', 'store.GSTNo', 'store.areaId', 'store.website', 'store.openTime', 'store.closeTime', 'store.location', 'store.storeImage', 'store.verifyDocument'
         ],
-        raw: true, // Return raw data to easily access the 'totalProducts' alias
+        raw: true, // Return raw data to easily access the 'totalProducts' alias,
         where: {
           status: "1",
         },
@@ -771,10 +769,8 @@ module.exports = {
         }
         return { ...store, distance: null }; // Set distance to null if not calculable
       });
-
       res.status(200).json({ success: true, data: storesWithDistance, count: stores.length });
     } catch (err) {
-      console.log(err, "err978707");
       next(new RequestError("Error"));
     }
   },
@@ -838,7 +834,7 @@ module.exports = {
         ],
         group: [
           // All non-aggregated attributes from the 'attributes' array must be in the 'group' clause
-          'store.id', 'store.storename', 'store.status', 'store.storeaddress', 'store.storedesc', 'store.ownername', 'store.owneraddress', 'store.email', 'store.phone', 'store.accountNo', 'store.accountHolderName', 'store.IFSC', 'store.bankName', 'store.branch', 'store.adharCardNo', 'store.panCardNo', 'store.GSTNo', 'store.areaId', 'store.website', 'store.openTime', 'store.closeTime', 'store.storeImage', 'store.verifyDocument'
+          'store.id', 'store.storename', 'store.status', 'store.storeaddress', 'store.storedesc', 'store.ownername', 'store.owneraddress', 'store.email', 'store.phone', 'store.accountNo', 'store.accountHolderName', 'store.IFSC', 'store.bankName', 'store.branch', 'store.adharCardNo', 'store.panCardNo', 'store.GSTNo', 'store.areaId', 'store.website', 'store.openTime', 'store.closeTime', 'store.storeImage', 'store.verifyDocument', 'store.location'
         ],
         raw: true, // Return raw data to easily access the 'totalProducts' alias
         where: {
@@ -938,8 +934,7 @@ module.exports = {
         ],
         raw: true, // Return raw data to easily access the 'totalProducts' alias,
         where: {
-          status: "1",
-          serviceType: "Service"
+          status: "1"
         },
       });
 
