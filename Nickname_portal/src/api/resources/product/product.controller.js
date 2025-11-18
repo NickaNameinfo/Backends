@@ -573,7 +573,7 @@ module.exports = {
 
   // filter product
   async getFilterbyProduct(req, res, next) {
-    try {
+    try { 
       let search = "%%";
       if (req.query.search) {
         search = "%" + req.query.search + "%";
@@ -587,8 +587,8 @@ module.exports = {
       // Define product filter conditions
       const productWhere = {
         [Op.or]: [
-          { name: { [Op.like]: search } },
-          { slug: { [Op.like]: search } },
+          { name: { [db.Sequelize.Op.like]: search } },
+          { slug: { [db.Sequelize.Op.like]: search } },
         ],
       };
 
