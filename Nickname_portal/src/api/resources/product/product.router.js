@@ -28,63 +28,63 @@ productRouter
     // jwtStrategy,
     productController.addProduct
   );
-productRouter.route("/getAllproduct").get(sanitize(), productController.index);
+productRouter.route("/getAllproduct").get(productController.index);
 productRouter
   .route("/getAllproductList")
-  .get(sanitize(), productController.getAllProductList);
+  .get(productController.getAllProductList);
 productRouter
   .route("/getProductsByOpenStores")
-  .get(sanitize(), productController.getProductsByOpenStores);
+  .get(productController.getProductsByOpenStores);
 productRouter
   .route("/update")
-  .post(sanitize(), productController.update);
+  .post(productController.update);
 productRouter
   .route("/getProductByCategory")
-  .get(sanitize(), productController.getProductListByCategory);
+  .get(productController.getProductListByCategory);
 productRouter
   .route("/getProductById/:id")
-  .get(sanitize(), productController.getProductListById);
+  .get(productController.getProductListById);
 productRouter
   .route("/getWebProductById/:id")
-  .get(sanitize(), productController.getWebProductListById);
+  .get(productController.getWebProductListById);
 productRouter
   .route("/product-offer")
-  .post(sanitize(), productController.addProductOffer);
+  .post(productController.addProductOffer);
 productRouter
   .route("/getAllProductOffer")
-  .get(sanitize(), productController.getProductOffer);
+  .get(productController.getProductOffer);
 productRouter
   .route("/delete")
-  .delete(sanitize(), productController.productDelete);
+  .delete(productController.productDelete);
 productRouter
   .route("/deleteOfferById/:id")
-  .get(sanitize(), productController.productOfferDelete);
-// productRouter.route('/upload-img').post(sanitize(), upload.array('file', 10), productController.multiplePhotoUpload);
+  .get(productController.productOfferDelete);
+// productRouter.route('/upload-img').post(upload.array('file', 10), productController.multiplePhotoUpload);
 productRouter
   .route("/getAllPhoto")
-  .get(sanitize(), productController.getAllPhoto);
+  .get(productController.getAllPhoto);
 productRouter
   .route("/slider-photo/delete")
-  .delete(sanitize(), productController.deleteSliderPhoto);
+  .delete(productController.deleteSliderPhoto);
 
 //Category by product
 productRouter
   .route("/getAllGroceryStaple")
-  .get(sanitize(), productController.getAllGrocerryStaples);
+  .get(productController.getAllGrocerryStaples);
 productRouter
   .route("/list/:slug")
-  .get(sanitize(), productController.getAllProductBySlug);
+  .get(productController.getAllProductBySlug);
 productRouter
   .route("/getAllByCategory")
-  .get(sanitize(), productController.GetAllByCategories);
+  .get(productController.GetAllByCategories);
 productRouter
   .route("/getallProductbySubChildCat")
-  .post(sanitize(), productController.getProductSubChildCat);
+  .post(productController.getProductSubChildCat);
 
 // Filter product
 productRouter
   .route("/gcatalogsearch/result")
-  .get(sanitize(), productController.getFilterbyProduct);
+  .get(productController.getFilterbyProduct);
 
 //new api
 productRouter
@@ -94,6 +94,6 @@ productRouter
 //aws image delete
 productRouter
   .route("/aws/delete/photo")
-  .post(sanitize(), productController.awsProductPhotoDelete);
+  .post(productController.awsProductPhotoDelete);
 
 module.exports = { productRouter };
