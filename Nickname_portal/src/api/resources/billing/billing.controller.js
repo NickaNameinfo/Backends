@@ -194,5 +194,43 @@ module.exports = {
       });
     }
   },
+  async getBillByStoreId(req, res, next) {
+    try {
+      const { storeId } = req.params;
+
+      if (!storeId) {
+        return res.status(400).json({ 
+          success: false, 
+          errors: ["Store ID is required"] 
+        });
+      }
+
+        const bills = await db.bill.findAll({
+        where: { storeId: storeId },
+        include: [
+          { model: db.store, required: false },
+          { model: db.vendor, as: 'vendor', required: false }
+        ]
+      });
+
+      if (!bills) {
+        return res.status(404).json({ 
+          success: false, 
+          errors: ["Bills not found"] 
+        });
+      }
+
+      res.status(200).json({ 
+        success: true, 
+        data: bills 
+      });
+    } catch (err) {
+      console.error(err, "Error fetching bills");
+      res.status(500).json({ 
+        success: false, 
+        errors: ["Error fetching bills", err.message] 
+      });
+    }
+  },
 };
 
