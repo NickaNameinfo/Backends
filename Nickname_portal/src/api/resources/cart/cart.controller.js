@@ -4,7 +4,7 @@ module.exports = {
   // Create a new cart item
   async create(req, res, next) {
     try {
-      const { productId, name, orderId, price, total, qty, photo, storeId } =
+      const { productId, name, orderId, price, total, qty, photo, storeId, unitSize } =
         req.body;
       const newCart = await db.carts.create({
         productId,
@@ -15,6 +15,7 @@ module.exports = {
         qty,
         photo,
         storeId,
+        unitSize,
       });
       res.status(201).json({ success: true, data: newCart });
     } catch (err) {
@@ -64,7 +65,7 @@ module.exports = {
   async update(req, res, next) {
     try {
       const { orderId, productId } = req.params;
-      const { name, price, total, qty, photo } = req.body;
+      const { name, price, total, qty, photo, unitSize } = req.body;
 
       const cart = await db.carts.findOne({ where: { orderId, productId } });
       if (!cart) {
@@ -80,6 +81,7 @@ module.exports = {
         total: total ?? cart.total,
         qty: qty ?? cart.qty,
         photo: photo ? photo : cart.photo,
+        unitSize: unitSize ? unitSize : cart.unitSize,
       });
       res.status(200).json({ success: true, data: cart });
     } catch (err) {
