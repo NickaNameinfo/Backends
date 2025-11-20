@@ -68,6 +68,7 @@ module.exports = {
       password,
       role,
       verify,
+      storeId,
     } = req.body;
     var passwordHash = bcrypt.hashSync(password);
     var token = generateOtp();
@@ -87,6 +88,7 @@ module.exports = {
           password: passwordHash,
           verify: verify,
           role: role,
+          storeId: storeId,
         });
       })
       .then((user) => {
