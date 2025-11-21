@@ -8,6 +8,7 @@ module.exports = (sequelize, DataTypes) => {
     total: DataTypes.INTEGER,
     qty: DataTypes.INTEGER,
     unitSize: DataTypes.STRING,
+    size: DataTypes.STRING,
     photo: DataTypes.STRING,
     storeId: DataTypes.INTEGER,
   }, {});

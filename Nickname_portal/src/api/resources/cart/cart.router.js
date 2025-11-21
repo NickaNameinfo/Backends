@@ -24,11 +24,10 @@ const upload = multer({ storage: storage });
 
 
 const cartRouter = express.Router();
-// cartRouter.route('/create').post(sanitize(),validateBody(schemas.cartDetails),cartController.index);
 cartRouter.route('/create').post(cartController.create);
-cartRouter.route('/list/:orderId').get(sanitize(), cartController.index);
-cartRouter.route('/list/:orderId/:productId').get(sanitize(), cartController.show);
-cartRouter.route('/update/:orderId/:productId').post(sanitize(), cartController.update);
-cartRouter.route('/delete/:orderId/:productId').delete(sanitize(), cartController.delete);
+cartRouter.route('/list/:orderId').get(cartController.index);
+cartRouter.route('/list/:orderId/:productId').get(cartController.show);
+cartRouter.route('/update/:orderId/:productId').post(cartController.update);
+cartRouter.route('/delete/:orderId/:productId').delete(cartController.delete);
 
 module.exports = { cartRouter };

@@ -14,6 +14,9 @@ module.exports = (sequelize, DataTypes) => {
     cutomerDeliveryDate: DataTypes.DATE,
     deliveryAddress : DataTypes.STRING,
     orderType : DataTypes.ENUM('Service','Product'),
+    size: DataTypes.STRING,
+    unitSize: DataTypes.STRING,
+    sizeDetails: DataTypes.JSON,
   }, {});
   Order.associate = function(models) {
     // associations can be defined here

@@ -118,9 +118,7 @@ module.exports = {
       db.store_product
         .findAll({
           where: {
-            supplierId: supplierId,
             productId: productId,
-            unitSize: unitSize,
           },
         })
         .then((data) => {

@@ -55,12 +55,14 @@ module.exports = {
         unitSize,
         sortDesc,
         desc,
+        description,
         buyerPrice,
         price,
         qty,
         discount,
         discountPer,
         total,
+        grand_total,
         netPrice,
         paymentMode,
         createdId,
@@ -69,8 +71,26 @@ module.exports = {
         isEnableCustomize,
         isBooking,
         photo,
-        serviceType
+        serviceType,
+        size,
+        weight,
+        sizeUnitSizeMap
       } = req.body;
+      // Handle description field (map to desc if description is provided)
+      const productDesc = desc || description || "";
+      
+      // Parse sizeUnitSizeMap if it's a string
+      let parsedSizeUnitSizeMap = null;
+      if (sizeUnitSizeMap) {
+        try {
+          parsedSizeUnitSizeMap = typeof sizeUnitSizeMap === 'string' 
+            ? JSON.parse(sizeUnitSizeMap) 
+            : sizeUnitSizeMap;
+        } catch (e) {
+          console.error("Error parsing sizeUnitSizeMap:", e);
+        }
+      }
+
       return db.product
         .create({
           categoryId: Number(categoryId),
@@ -82,13 +102,14 @@ module.exports = {
           brand: brand,
           unitSize: unitSize,
           sortDesc: sortDesc,
-          desc: desc,
+          desc: productDesc,
           buyerPrice: buyerPrice,
           price: price,
-          qty: qty,
-          discount: discount,
-          discountPer: discountPer,
-          total: total,
+          qty: qty || null,
+          discount: discount || null,
+          discountPer: discountPer || null,
+          total: total || null,
+          grandTotal: grand_total || null,
           netPrice: netPrice,
           paymentMode: paymentMode,
           photo: photo ? photo : "",
@@ -97,7 +118,10 @@ module.exports = {
           isEnableEcommerce: isEnableEcommerce,
           isEnableCustomize: isEnableCustomize,
           isBooking: isBooking,
-          serviceType: serviceType
+          serviceType: serviceType,
+          size: size || null,
+          weight: weight || null,
+          sizeUnitSizeMap: parsedSizeUnitSizeMap
         })
         .then((product) => {
           res.status(200).json({
@@ -189,6 +213,7 @@ module.exports = {
         status,
         unitSize,
         desc,
+        description,
         buyerPrice,
         price,
         qty,
@@ -196,6 +221,7 @@ module.exports = {
         discount,
         discountPer,
         total,
+        grand_total,
         netPrice,
         paymentMode,
         createdId,
@@ -204,43 +230,66 @@ module.exports = {
         isEnableCustomize,
         isBooking,
         photo,
-        serviceType
+        serviceType,
+        size,
+        weight,
+        sizeUnitSizeMap
       } = req.body;
       db.product
         .findOne({ where: { id: id } })
         .then((product) => {
           if (product) {
+            // Handle description field (map to desc if description is provided)
+            const productDesc = desc !== undefined ? desc : (description !== undefined ? description : product.desc);
+            
+            // Parse sizeUnitSizeMap if it's a string
+            let parsedSizeUnitSizeMap = product.sizeUnitSizeMap;
+            if (sizeUnitSizeMap !== undefined) {
+              try {
+                parsedSizeUnitSizeMap = typeof sizeUnitSizeMap === 'string' 
+                  ? JSON.parse(sizeUnitSizeMap) 
+                  : sizeUnitSizeMap;
+              } catch (e) {
+                console.error("Error parsing sizeUnitSizeMap:", e);
+                parsedSizeUnitSizeMap = product.sizeUnitSizeMap;
+              }
+            }
+
             return db.product.update(
               {
-                categoryId: categoryId ? categoryId : product.categoryId,
-                subCategoryId: subCategoryId
+                categoryId: categoryId !== undefined ? categoryId : product.categoryId,
+                subCategoryId: subCategoryId !== undefined
                   ? subCategoryId
                   : product.subCategoryId,
-                childCategoryId: childCategoryId
+                childCategoryId: childCategoryId !== undefined
                   ? childCategoryId
                   : product.childCategoryId,
-                name: name ? name : product.name,
-                slug: slug ? slug : product.slug,
-                status: status,
-                brand: brand ? brand : product?.brand,
-                unitSize: unitSize ? unitSize : product.unitSize,
-                desc: desc ? desc : product.desc,
-                sortDesc: sortDesc ? sortDesc : product.sortDesc,
-                buyerPrice: buyerPrice ? buyerPrice : product.buyerPrice,
-                price: price ? price : product.price,
-                qty: qty ? qty : product.qty,
-                discount: discount ? discount : product.discount,
-                discountPer: discountPer ? discountPer : product.discountPer,
-                total: total ? total : product.total,
-                netPrice: netPrice ? netPrice : product.netPrice,
-                paymentMode: paymentMode ? paymentMode : product.paymentMode,
-                photo: photo ? photo : product.photo,
-                createdId: createdId ? createdId : product.createdId,
-                createdType: createdType ? createdType : product.createdType,
-                isEnableEcommerce: isEnableEcommerce ? isEnableEcommerce : product.isEnableEcommerce,
-                isEnableCustomize: isEnableCustomize ? isEnableCustomize : product.isEnableCustomize,
-                isBooking: isBooking ? isBooking : product.isBooking,
-                serviceType: serviceType ? serviceType : product.serviceType
+                name: name !== undefined ? name : product.name,
+                slug: slug !== undefined ? slug : product.slug,
+                status: status !== undefined ? status : product.status,
+                brand: brand !== undefined ? brand : product?.brand,
+                unitSize: unitSize !== undefined ? unitSize : product.unitSize,
+                desc: productDesc,
+                sortDesc: sortDesc !== undefined ? sortDesc : product.sortDesc,
+                buyerPrice: buyerPrice !== undefined ? buyerPrice : product.buyerPrice,
+                price: price !== undefined ? price : product.price,
+                qty: qty !== undefined ? qty : product.qty,
+                discount: discount !== undefined ? discount : product.discount,
+                discountPer: discountPer !== undefined ? discountPer : product.discountPer,
+                total: total !== undefined ? total : product.total,
+                grandTotal: grand_total !== undefined ? grand_total : product.grandTotal,
+                netPrice: netPrice !== undefined ? netPrice : product.netPrice,
+                paymentMode: paymentMode !== undefined ? paymentMode : product.paymentMode,
+                photo: photo !== undefined ? photo : product.photo,
+                createdId: createdId !== undefined ? createdId : product.createdId,
+                createdType: createdType !== undefined ? createdType : product.createdType,
+                isEnableEcommerce: isEnableEcommerce !== undefined ? isEnableEcommerce : product.isEnableEcommerce,
+                isEnableCustomize: isEnableCustomize !== undefined ? isEnableCustomize : product.isEnableCustomize,
+                isBooking: isBooking !== undefined ? isBooking : product.isBooking,
+                serviceType: serviceType !== undefined ? serviceType : product.serviceType,
+                size: size !== undefined ? size : product.size,
+                weight: weight !== undefined ? weight : product.weight,
+                sizeUnitSizeMap: parsedSizeUnitSizeMap
               },
               { where: { id: product.id } }
             );
@@ -740,6 +789,4 @@ module.exports = {
       next(new RequestError("Error"));
     }
   }
-
-
 };

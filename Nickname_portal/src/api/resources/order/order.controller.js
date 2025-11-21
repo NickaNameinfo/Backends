@@ -15,8 +15,24 @@ module.exports = {
         storeId,
         customization,
         cutomerDeliveryDate,
-        orderType
+        orderType,
+        size,
+        unitSize,
+        sizeDetails
       } = req.body;
+
+      // Parse sizeDetails if it's a string
+      let parsedSizeDetails = null;
+      if (sizeDetails) {
+        try {
+          parsedSizeDetails = typeof sizeDetails === 'string' 
+            ? JSON.parse(sizeDetails) 
+            : sizeDetails;
+        } catch (e) {
+          console.error("Error parsing sizeDetails:", e);
+        }
+      }
+
       db.user
         .findOne({ where: { id: custId } })
         .then((p) => {
@@ -33,6 +49,9 @@ module.exports = {
               customization: customization ? customization : null,
               cutomerDeliveryDate: cutomerDeliveryDate ? cutomerDeliveryDate : null,
               deliveryAddress: Object.values(deliveryAddress).join(", "),
+              size: size || null,
+              unitSize: unitSize || null,
+              sizeDetails: parsedSizeDetails
             });
           }
           return res.status(500).json({ errors: ["User is not found"] });

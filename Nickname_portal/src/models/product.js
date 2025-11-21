@@ -61,6 +61,10 @@ module.exports = (sequelize, DataTypes) => {
       isEnableCustomize: DataTypes.TEXT,
       isBooking: DataTypes.TEXT,
       serviceType: DataTypes.TEXT,
+      grandTotal: DataTypes.DECIMAL(10, 2),
+      size: DataTypes.STRING,
+      weight: DataTypes.STRING,
+      sizeUnitSizeMap: DataTypes.JSON,
     },
     {}
   );
