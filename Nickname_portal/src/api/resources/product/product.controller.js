@@ -235,6 +235,7 @@ module.exports = {
         weight,
         sizeUnitSizeMap
       } = req.body;
+      console.log(req.body, "asd7fa0s98d7f9a")
       db.product
         .findOne({ where: { id: id } })
         .then((product) => {
@@ -270,6 +271,7 @@ module.exports = {
                 brand: brand !== undefined ? brand : product?.brand,
                 unitSize: unitSize !== undefined ? unitSize : product.unitSize,
                 desc: productDesc,
+                photo: photo !== undefined ? photo : product.photo,
                 sortDesc: sortDesc !== undefined ? sortDesc : product.sortDesc,
                 buyerPrice: buyerPrice !== undefined ? buyerPrice : product.buyerPrice,
                 price: price !== undefined ? price : product.price,
