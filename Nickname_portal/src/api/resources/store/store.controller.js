@@ -515,7 +515,29 @@ module.exports = {
           ],
         })
         .then((list) => {
-          res.status(200).json({ success: true, data: list, count: list.length });
+          // Reorder product fields: isEnableEcommerce, isEnableCustomize, isBooking first
+          const reorderedList = list.map((item) => {
+            if (item.product) {
+              const product = item.product.toJSON ? item.product.toJSON() : item.product;
+              const { isEnableEcommerce, isEnableCustomize, isBooking, ...otherFields } = product;
+              
+              // Create new product object with priority fields first
+              const reorderedProduct = {
+                isEnableEcommerce,
+                isEnableCustomize,
+                isBooking,
+                ...otherFields
+              };
+              
+              return {
+                ...item.toJSON ? item.toJSON() : item,
+                product: reorderedProduct
+              };
+            }
+            return item.toJSON ? item.toJSON() : item;
+          });
+          
+          res.status(200).json({ success: true, data: reorderedList, count: reorderedList.length });
         })
         .catch(function (err) {
           next(err);
