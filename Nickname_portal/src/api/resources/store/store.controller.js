@@ -515,8 +515,8 @@ module.exports = {
           ],
         })
         .then((list) => {
-          // Reorder product fields: isEnableEcommerce, isEnableCustomize, isBooking first
-          const reorderedList = list.map((item) => {
+          // Helper function to reorder product fields
+          const reorderProductFields = (item) => {
             if (item.product) {
               const product = item.product.toJSON ? item.product.toJSON() : item.product;
               const { isEnableEcommerce, isEnableCustomize, isBooking, ...otherFields } = product;
@@ -535,7 +535,34 @@ module.exports = {
               };
             }
             return item.toJSON ? item.toJSON() : item;
+          };
+
+          // Separate products into two groups:
+          // First: products where isEnableEcommerce === 1 OR isEnableCustomize === 1 OR isBooking === 1
+          // Second: all other products
+          const priorityProducts = [];
+          const otherProducts = [];
+
+          list.forEach((item) => {
+            if (item.product) {
+              const product = item.product.toJSON ? item.product.toJSON() : item.product;
+              const hasPriority = 
+                Number(product.isEnableEcommerce) === Number(1) ||
+                Number(product.isEnableCustomize) === Number(1) ||
+                Number(product.isBooking) === Number(1);
+              
+              if (hasPriority) {
+                priorityProducts.push(reorderProductFields(item));
+              } else {
+                otherProducts.push(reorderProductFields(item));
+              }
+            } else {
+              otherProducts.push(reorderProductFields(item));
+            }
           });
+
+          // Combine: priority products first, then other products
+          const reorderedList = [...priorityProducts, ...otherProducts];
           
           res.status(200).json({ success: true, data: reorderedList, count: reorderedList.length });
         })
