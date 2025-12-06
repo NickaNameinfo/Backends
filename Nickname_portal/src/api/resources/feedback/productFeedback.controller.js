@@ -41,7 +41,7 @@ module.exports = {
         .create({
           customerId: customerId,
           productId: productId,
-          vendorId: vendorId,
+          vendorId: '0',
           storeId: storeId,
           feedBack: feedBack,
           rating: rating,

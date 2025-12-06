@@ -32,7 +32,7 @@ restRouter.use("/vendorStock", vendorStockRouter);
 restRouter.use("/cart", cartRouter);
 restRouter.use("/requestStore", requestStoreRouter);
 restRouter.use("/billing", billingRouter);
-restRouter.use("/productFeedbackRouter", productFeedbackRouter);
+restRouter.use("/productFeedback", productFeedbackRouter);
 restRouter.use("/subscription", subscriptionRouter);
 restRouter.use("/ads", adRouter);
 restRouter.use("/address", addressRouter);

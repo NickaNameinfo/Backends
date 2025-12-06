@@ -42,7 +42,6 @@ module.exports = {
   /* Add user api start here................................*/
 
   async addProduct(req, res, next) {
-    console.log(req?.body, "asd7fa0s98d7f9a")
     try {
       const {
         categoryId,
@@ -235,7 +234,6 @@ module.exports = {
         weight,
         sizeUnitSizeMap
       } = req.body;
-      console.log(req.body, "asd7fa0s98d7f9a")
       db.product
         .findOne({ where: { id: id } })
         .then((product) => {
