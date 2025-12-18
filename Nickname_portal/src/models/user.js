@@ -21,6 +21,7 @@ module.exports = (sequelize, DataTypes) => {
     models.user.belongsTo(models.vendor, { foreignKey: "vendorId" }); // A user belongs to one vendor
     models.user.belongsTo(models.store, { foreignKey: "storeId" }); // A user belongs to one vendor
     models.user.hasMany(models.orders, { foreignKey: "custId" }); // A user can have many orders
+    models.user.hasMany(models.subscriptions, { foreignKey: "customerId" }); // A user can have many subscriptions
   };
   return user;
 };

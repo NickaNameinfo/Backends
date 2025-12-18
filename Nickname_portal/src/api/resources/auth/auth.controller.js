@@ -5,7 +5,7 @@ const bcrypt = require("bcrypt-nodejs");
 const speakeasy = require("speakeasy");
 const { validateEmail } = require("./../../../functions");
 const db = require("../../../models");
-const { Op } = require('sequelize'); // Import Sequelize Op for logical operators
+const { Op, Sequelize } = require('sequelize'); // Import Sequelize Op for logical operators
 const AWS = require("aws-sdk"); // New import
 const dotenv = require("dotenv"); // New import
 const sharp = require("sharp"); // Import sharp for image processing
@@ -106,20 +106,47 @@ module.exports = {
   },
 
   async findUser(req, res, next) {
-    db.user
-      .findOne({
+    try {
+      // First, find the user
+      const user = await db.user.findOne({
         where: { id: req.params.id },
         paranoid: false,
-      })
-      .then((user) => {
-        if (user) {
-          return res.status(200).json({ success: true, data: user });
-        } else res.status(500).json({ success: false });
-      })
-      .catch((err) => {
-        console.log(err);
-        next(err);
       });
+
+      if (!user) {
+        return res.status(500).json({ success: false });
+      }
+
+      // Build array of possible customerId values (id, storeId, vendorId)
+      const customerIds = [user.id];
+      
+      // Add storeId if it exists and is a valid number
+      if (user.storeId && user.storeId !== '' && !isNaN(user.storeId)) {
+        customerIds.push(parseInt(user.storeId));
+      }
+      
+      // Add vendorId if it exists and is a valid number
+      if (user.vendorId && user.vendorId !== '' && !isNaN(user.vendorId)) {
+        customerIds.push(parseInt(user.vendorId));
+      }
+
+      // Find subscriptions where customerId matches any of the user's id, storeId, or vendorId
+      const subscriptions = await db.subscriptions.findAll({
+        where: {
+          customerId: {
+            [Op.in]: customerIds,
+          },
+        },
+      });
+
+      // Attach subscriptions to user object
+      user.dataValues.subscriptions = subscriptions;
+
+      return res.status(200).json({ success: true, data: user });
+    } catch (err) {
+      console.log(err);
+      next(err);
+    }
   },
 
   async getAllUserList(req, res, next) {
