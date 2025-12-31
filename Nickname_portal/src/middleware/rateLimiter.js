@@ -24,7 +24,14 @@ const createRateLimiter = (options = {}) => {
   } = options;
 
   return (req, res, next) => {
-    const key = req.ip || req.connection.remoteAddress;
+    // Better IP detection - check multiple sources
+    const ip = req.ip || 
+               req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+               req.headers['x-real-ip'] || 
+               req.connection?.remoteAddress || 
+               req.socket?.remoteAddress ||
+               'unknown';
+    const key = ip;
     const now = Date.now();
     
     // Clean up old entries periodically
@@ -47,32 +54,68 @@ const createRateLimiter = (options = {}) => {
       rateLimitStore.set(key, record);
     }
 
-    // Increment count
-    record.count++;
-
     // Set rate limit headers
     res.setHeader('X-RateLimit-Limit', max);
     res.setHeader('X-RateLimit-Remaining', Math.max(0, max - record.count));
     res.setHeader('X-RateLimit-Reset', new Date(record.resetTime).toISOString());
 
-    // Check if limit exceeded
-    if (record.count > max) {
-      return res.status(429).json({
-        success: false,
-        message: message,
-        retryAfter: Math.ceil((record.resetTime - now) / 1000), // seconds
-      });
-    }
-
-    // Skip counting successful requests if option is set
     if (skipSuccessfulRequests) {
+      // Only count failed requests (status >= 400)
+      // Check current count first - allow exactly 'max' failed attempts
+      // If count is already at max or more, block before processing
+      // Note: We check >= max because count will be incremented AFTER the response
+      // So if count is already max, we've already used all our attempts
+      if (record.count >= max) {
+        return res.status(429).json({
+          success: false,
+          message: message,
+          retryAfter: Math.ceil((record.resetTime - now) / 1000), // seconds
+        });
+      }
+      
+      // Note: Count will be incremented in the response interceptor only for failed requests
+
+      // Intercept response to count only failed requests
+      // Use a flag to prevent double-counting if both send and json are called
+      let responseCounted = false;
       const originalSend = res.send;
-      res.send = function (data) {
-        if (res.statusCode < 400) {
-          record.count = Math.max(0, record.count - 1);
+      const originalJson = res.json;
+      
+      const incrementIfFailed = (statusCode) => {
+        if (!responseCounted && statusCode >= 400) {
+          responseCounted = true;
+          record.count++;
+          // Update remaining header after increment
+          res.setHeader('X-RateLimit-Remaining', Math.max(0, max - record.count));
         }
+      };
+      
+      res.send = function (data) {
+        const statusCode = res.statusCode || 200;
+        incrementIfFailed(statusCode);
         return originalSend.call(this, data);
       };
+      
+      res.json = function (data) {
+        const statusCode = res.statusCode || 200;
+        incrementIfFailed(statusCode);
+        return originalJson.call(this, data);
+      };
+    } else {
+      // Normal flow: increment count first, then check
+      record.count++;
+
+      // Update remaining header
+      res.setHeader('X-RateLimit-Remaining', Math.max(0, max - record.count));
+
+      // Check if limit exceeded
+      if (record.count > max) {
+        return res.status(429).json({
+          success: false,
+          message: message,
+          retryAfter: Math.ceil((record.resetTime - now) / 1000), // seconds
+        });
+      }
     }
 
     next();
@@ -82,11 +125,12 @@ const createRateLimiter = (options = {}) => {
 /**
  * Strict rate limiter for authentication endpoints
  * More restrictive to prevent brute force attacks
+ * Only counts failed login attempts (successful logins don't count)
  */
 exports.authRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Only 5 login attempts per 15 minutes
-  message: 'Too many login attempts. Please try again after 15 minutes.',
+  max: 10, // 10 failed login attempts per 15 minutes (successful logins don't count)
+  message: 'Too many failed login attempts. Please try again after 15 minutes.',
   skipSuccessfulRequests: true,
 });
 
