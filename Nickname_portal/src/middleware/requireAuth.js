@@ -14,13 +14,95 @@ const PUBLIC_ROUTES = [
   // Auth routes
   '/auth/register',
   '/auth/rootLogin',
+  '/auth/upload-file',
   
   // Customer routes
   '/customer/register',
   '/customer/login',
+  '/customer/getUserByEmailId',
   
-  // Add other public routes here
-  // '/public/endpoint',
+  // Category routes
+  '/category/getAllCategory',
+  '/category/getAllSubCategory',
+  '/category/getAllSubChildCategory',
+  '/category/list',
+  '/category/mobile/getAllCategory',
+  '/category/mobile/getAllSubCategoryById',
+  
+  // Location routes
+  '/location/list',
+  '/location/area/list',
+  
+  // Store routes
+  '/store/create',
+  '/store/list',
+  '/store/service/list',
+  '/store/list/:id',
+  '/store/product-list',
+  '/store/product/getAllProductById/:id',
+  '/store/filterByCategory',
+  '/store/service/filterByCategory',
+  '/store/getAllStoresByFilters',
+  '/store/service/getAllStoresByFilters',
+  '/store/getOpenStores',
+  
+  // Product routes
+  '/product/add',
+  '/product/getAllproduct',
+  '/product/getAllproductList',
+  '/product/getProductsByOpenStores',
+  '/product/getProductByCategory',
+  '/product/getProductById/:id',
+  '/product/getWebProductById/:id',
+  '/product/getAllProductOffer',
+  '/product/getAllPhoto',
+  '/product/getAllGroceryStaple',
+  '/product/list/:slug',
+  '/product/getAllByCategory',
+  '/product/getallProductbySubChildCat',
+  '/product/gcatalogsearch/result',
+  '/product/search_product',
+  '/product/aws/delete/photo',
+  
+  // Order routes
+  '/order/create',
+  '/order/list/:id',
+  '/order/store/list/:id',
+  
+  // Cart routes
+  '/cart/create',
+  '/cart/list/:orderId',
+  '/cart/list/:orderId/:productId',
+  '/cart/update/:orderId/:productId',
+  '/cart/delete/:orderId/:productId',
+  
+  // Address routes
+  '/address/create',
+  '/address/:id',
+  '/address/list/:custId',
+  '/address/update/:id',
+  '/address/delete/:id',
+  
+  // VendorStock routes (all routes)
+  '/vendorStock',
+  '/vendorStock/:id',
+  
+  // ProductFeedback routes
+  '/productFeedback/list/:id',
+  
+  // RequestStore routes
+  '/requestStore/add',
+  
+  // Payment routes
+  '/payment/orders',
+
+  
+  // Subscription routes
+  '/subscription/:id',
+  
+  // Ad routes
+  '/ads',
+  '/ads/:id',
 ];
 
 /**
