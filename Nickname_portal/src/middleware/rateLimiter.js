@@ -150,7 +150,7 @@ exports.apiRateLimiter = createRateLimiter({
  */
 exports.strictRateLimiter = createRateLimiter({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // Only 3 attempts per hour
+  max: 5, // Only 3 attempts per hour
   message: 'Too many attempts. Please try again after 1 hour.',
 });
 

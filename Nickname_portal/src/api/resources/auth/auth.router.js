@@ -4,7 +4,7 @@ const { localStrategy , jwtStrategy} = require('../../../middleware/strategy');
 const { sanitize } = require('../../../middleware/sanitizer');
 const { validateBody, schemas } = require('../../../middleware/validator');
 const { authRateLimiter, strictRateLimiter } = require('../../../middleware/rateLimiter');
-const { validateFileUpload } = require('../../../middleware/securityValidator');
+// const { validateFileUpload } = require('../../../middleware/securityValidator');
 const { requireAdmin } = require('../../../middleware/requireAuth');
 const multer = require("multer");
 const path = require("path"); // Ensure path is imported if not already
@@ -41,7 +41,7 @@ authRouter.route('/rootLogin').post(
 // Apply file validation to upload endpoint
 authRouter.route('/upload-file').post(
   upload.single("file"), 
-  validateFileUpload,
+  // validateFileUpload,
   authController.uploadFileController
 );
 
