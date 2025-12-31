@@ -26,7 +26,7 @@ const upload = multer({ storage: storage });
 
 const storeRouter = express.Router();
 // storeRouter.route('/create').post(sanitize(),validateBody(schemas.storeDetails),storeController.index);
-storeRouter.route('/create').post(jwtStrategy, storeController.index);
+storeRouter.route('/create').post(storeController.index);
 storeRouter.route('/list').get(sanitize(), storeController.getAllstore);
 storeRouter.route('/service/list').get(sanitize(), storeController.getServiceAllstore);
 storeRouter.route('/admin/list').get(sanitize(), jwtStrategy, requireAdmin, storeController.adminGetAllstore);
