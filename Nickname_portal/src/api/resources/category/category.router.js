@@ -3,6 +3,7 @@ const categoryController = require("./category.controller");
 const { jwtStrategy } = require("../../../middleware/strategy");
 const { sanitize } = require("../../../middleware/sanitizer");
 const { validateBody, schemas } = require("../../../middleware/validator");
+const { requireAdmin } = require("../../../middleware/requireAuth");
 
 const categoryRouter = express.Router();
 
@@ -11,11 +12,11 @@ categoryRouter
   .get(sanitize(), categoryController.getCategoryList);
 categoryRouter
   .route("/getAllSubCategory")
-  .get(sanitize(), jwtStrategy, categoryController.getSubCategoryList);
+  .get(sanitize(), categoryController.getSubCategoryList);
 categoryRouter
   .route("/getAllSubChildCategory")
-  .get(sanitize(), jwtStrategy, categoryController.getSubChildCategoryList);
-categoryRouter.route("/create").post(sanitize(), categoryController.addCategory);
+  .get(sanitize(), categoryController.getSubChildCategoryList);
+categoryRouter.route("/create").post(sanitize(), jwtStrategy, categoryController.addCategory);
 categoryRouter.route("/list").get(sanitize(), categoryController.getList);
 categoryRouter
   .route("/getCategoryById")

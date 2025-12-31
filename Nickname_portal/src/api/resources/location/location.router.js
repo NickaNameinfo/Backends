@@ -3,6 +3,7 @@ const locationController = require("./location.controller");
 const { sanitize } = require("../../../middleware/sanitizer");
 const { jwtStrategy } = require("../../../middleware/strategy");
 const { validateBody, schemas } = require("../../../middleware/validator");
+const { requireAdmin } = require("../../../middleware/requireAuth");
 
 const locationRouter = express.Router();
 locationRouter
@@ -29,11 +30,11 @@ locationRouter
   .post(sanitize(), jwtStrategy, locationController.getAreaUpdate);
 locationRouter
   .route("/area/getAllAreaList")
-  .get(sanitize(), locationController.getAreaList);
+  .get(sanitize(), jwtStrategy, requireAdmin, locationController.getAreaList);
 
 // get location
 locationRouter
   .route("/area/list/getbyid")
-  .get(sanitize(), locationController.getAreaListById);
+  .get(sanitize(), jwtStrategy, locationController.getAreaListById);
 
 module.exports = { locationRouter };

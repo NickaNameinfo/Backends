@@ -2,6 +2,7 @@ const express = require("express");
 const requestStoreController = require("./requestStore.controller");
 const { sanitize } = require("../../../middleware/sanitizer");
 const { jwtStrategy } = require("../../../middleware/strategy");
+const { requireAdmin } = require("../../../middleware/requireAuth");
 const path = require("path");
 const multer = require("multer");
 
@@ -28,18 +29,18 @@ requestStoreRouter.route("/add").post(
   requestStoreController.create
 );
 
-requestStoreRouter.route("/getAll").get(requestStoreController.index);
+requestStoreRouter.route("/getAll").get(jwtStrategy, requireAdmin, requestStoreController.index);
 
 requestStoreRouter
   .route("/update/:id")
-  .post(sanitize(), upload.single("document"), requestStoreController.update);
+  .post(sanitize(), jwtStrategy, upload.single("document"), requestStoreController.update);
 
 requestStoreRouter
   .route("/getById/:id")
-  .get(sanitize(), requestStoreController.getById);
+  .get(sanitize(), jwtStrategy, requestStoreController.getById);
 
 requestStoreRouter
   .route("/delete/:id")
-  .delete(sanitize(), requestStoreController.delete);
+  .delete(sanitize(), jwtStrategy, requestStoreController.delete);
 
 module.exports = { requestStoreRouter };

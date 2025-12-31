@@ -1,14 +1,16 @@
 const express = require("express");
 const orderController = require("./order.controller");
 const { sanitize } = require("../../../middleware/sanitizer");
+const { jwtStrategy } = require("../../../middleware/strategy");
+const { requireAdmin } = require("../../../middleware/requireAuth");
 
 const orderRouter = express.Router();
 
 orderRouter.route("/create").post(orderController.index);
-orderRouter.route("/list").get(orderController.getAllOrderList);
+orderRouter.route("/list").get(jwtStrategy, requireAdmin, orderController.getAllOrderList);
 orderRouter
   .route("/status/update")
-  .post(orderController.statusUpdate);
+  .post(jwtStrategy, orderController.statusUpdate);
 orderRouter
   .route("/list/:id")
   .get(orderController.getAllOrderListById); 
@@ -17,6 +19,6 @@ orderRouter
   .get(orderController.getAllOrderListBySoreId); 
 orderRouter
   .route("/status")
-  .post(orderController.getAllOrderStatus);
-orderRouter.route("/count").get(orderController.getAllOrderCount);
+  .post(jwtStrategy, orderController.getAllOrderStatus);
+orderRouter.route("/count").get(jwtStrategy, orderController.getAllOrderCount);
 module.exports = { orderRouter };

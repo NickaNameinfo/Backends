@@ -1,18 +1,20 @@
 const express = require("express");
 const productFeedbackController = require("./productFeedback.controller");
 const { sanitize } = require("../../../middleware/sanitizer");
+const { jwtStrategy } = require("../../../middleware/strategy");
+const { requireAdmin } = require("../../../middleware/requireAuth");
 
 const productFeedbackRouter = express.Router();
 
 // Create new product feedback
 productFeedbackRouter
   .route("/create")
-  .post(productFeedbackController.addProductFeedback);
+  .post(jwtStrategy, productFeedbackController.addProductFeedback);
 
 // Get all product feedback
 productFeedbackRouter
   .route("/list")
-  .get(productFeedbackController.getProductFeedback);
+  .get(jwtStrategy, requireAdmin, productFeedbackController.getProductFeedback);
 
 // Get product feedback by productId
 productFeedbackRouter
@@ -22,11 +24,11 @@ productFeedbackRouter
 // Update product feedback
 productFeedbackRouter
   .route("/update")
-  .post(productFeedbackController.updateProductFeedback);
+  .post(jwtStrategy, productFeedbackController.updateProductFeedback);
 
 // Delete product feedback
 productFeedbackRouter
   .route("/delete/:id")
-  .delete(productFeedbackController.deleteProductFeedback);
+  .delete(jwtStrategy, requireAdmin, productFeedbackController.deleteProductFeedback);
 
 module.exports = { productFeedbackRouter };

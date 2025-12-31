@@ -63,6 +63,7 @@ exports.validatelogin = (req, res, next) => {
       expire: new Date().setMinutes(date.getMinutes() + 30),
       httpOnly: true,
       secure: config.app.secure,
+      sameSite: 'Lax', // CSRF protection - Lax allows top-level navigation
     });
 
     req.user = user;

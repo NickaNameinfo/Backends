@@ -16,12 +16,33 @@ exports.jwtStrategy = (req, res, next) => {
     passport.authenticate('user-jwt', {session: false}, (err, user, info) => { 
         let contype = req.headers['content-type'];
         var json = !(!contype || contype.indexOf('application/json') !== 0);
-        if (err && err == 'expired'){ return json?res.status(500).json({ errors: ['Session is expired']}):res.redirect('/auth/login'); }
-        if (err && err == 'invalid'){ return json?res.status(500).json({ errors: ['Invalid token recieved']}):res.redirect('/logout'); }
-        if (err && err == 'user'){ return json?res.status(500).json({ errors: ['Invalid user recieved']}):res.redirect('/logout'); }
-        if (err && Object.keys(err).length) { return res.status(500).json({ errors: [ err ]}); }
-        if (err) { return res.status(500).json({ errors: [ 'Invalid user recieved' ]}); }
-        if (!user) { return json?res.status(500).json({ errors: ['Invalid user recieved']}):res.redirect('/logout'); }
+        // Return 401 (Unauthorized) for authentication errors instead of 500
+        if (err && err == 'expired'){ 
+            return json
+                ? res.status(401).json({ success: false, errors: ['Session is expired'], message: 'Your session has expired. Please login again.' })
+                : res.redirect('/auth/login'); 
+        }
+        if (err && err == 'invalid'){ 
+            return json
+                ? res.status(401).json({ success: false, errors: ['Invalid token received'], message: 'Invalid authentication token. Please login again.' })
+                : res.redirect('/logout'); 
+        }
+        if (err && err == 'user'){ 
+            return json
+                ? res.status(401).json({ success: false, errors: ['Invalid user'], message: 'User not found. Please login again.' })
+                : res.redirect('/logout'); 
+        }
+        if (err && Object.keys(err).length) { 
+            return res.status(401).json({ success: false, errors: [ err ], message: 'Authentication failed.' }); 
+        }
+        if (err) { 
+            return res.status(401).json({ success: false, errors: [ 'Invalid user received' ], message: 'Authentication failed.' }); 
+        }
+        if (!user) { 
+            return json
+                ? res.status(401).json({ success: false, errors: ['Invalid user received'], message: 'Authentication failed. Please login again.' })
+                : res.redirect('/logout'); 
+        }
         req.user = user;
         next();
     })(req, res, next);

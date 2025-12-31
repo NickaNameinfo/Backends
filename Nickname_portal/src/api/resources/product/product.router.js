@@ -2,6 +2,7 @@ const express = require("express");
 const productController = require("./product.controller");
 const { sanitize } = require("../../../middleware/sanitizer");
 const { jwtStrategy } = require("../../../middleware/strategy");
+const { requireAdmin } = require("../../../middleware/requireAuth");
 // const upload = require('../../../awsbucket');
 const path = require("path");
 const multer = require("multer");
@@ -37,7 +38,7 @@ productRouter
   .get(productController.getProductsByOpenStores);
 productRouter
   .route("/update")
-  .post(productController.update);
+  .post(jwtStrategy, productController.update);
 productRouter
   .route("/getProductByCategory")
   .get(productController.getProductListByCategory);
@@ -49,23 +50,23 @@ productRouter
   .get(productController.getWebProductListById);
 productRouter
   .route("/product-offer")
-  .post(productController.addProductOffer);
+  .post(jwtStrategy, requireAdmin, productController.addProductOffer);
 productRouter
   .route("/getAllProductOffer")
   .get(productController.getProductOffer);
 productRouter
   .route("/delete")
-  .delete(productController.productDelete);
+  .delete(jwtStrategy, requireAdmin, productController.productDelete);
 productRouter
   .route("/deleteOfferById/:id")
-  .get(productController.productOfferDelete);
+  .get(jwtStrategy, requireAdmin, productController.productOfferDelete);
 // productRouter.route('/upload-img').post(upload.array('file', 10), productController.multiplePhotoUpload);
 productRouter
   .route("/getAllPhoto")
   .get(productController.getAllPhoto);
 productRouter
   .route("/slider-photo/delete")
-  .delete(productController.deleteSliderPhoto);
+  .delete(jwtStrategy, requireAdmin, productController.deleteSliderPhoto);
 
 //Category by product
 productRouter

@@ -33,8 +33,11 @@ module.exports = {
         app.use(passport.session());
         app.use(expressSanitizer());
         app.use(helmet());
+        // HSTS (HTTP Strict Transport Security) - Force HTTPS for 1 year
         app.use(helmet.hsts({
-            maxAge: 0
+            maxAge: 31536000, // 1 year in seconds
+            includeSubDomains: true, // Apply to subdomains
+            preload: true // Allow HSTS preload
         }));
 
         Number.prototype.pad = function (size) {

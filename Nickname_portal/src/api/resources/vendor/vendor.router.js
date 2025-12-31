@@ -5,6 +5,7 @@ const vendorController = require("./vendor.controller");
 const { sanitize } = require("../../../middleware/sanitizer");
 const { jwtStrategy } = require("../../../middleware/strategy");
 const { validateBody, schemas } = require("../../../middleware/validator");
+const { requireAdmin } = require("../../../middleware/requireAuth");
 const path = require("path");
 const multer = require("multer");
 
@@ -25,27 +26,27 @@ const upload = multer({ storage: storage });
 const vendorRouter = express.Router();
 vendorRouter
   .route("/create")
-  .post(upload.single("vendorImage"), vendorController.index);
-vendorRouter.route("/list").get(sanitize(), vendorController.getAllvendor);
+  .post(jwtStrategy, upload.single("vendorImage"), vendorController.index);
+vendorRouter.route("/list").get(sanitize(), jwtStrategy, requireAdmin, vendorController.getAllvendor);
 vendorRouter
   .route("/list/:id")
-  .get(sanitize(), vendorController.getVendorStockById);
+  .get(sanitize(), jwtStrategy, vendorController.getVendorStockById);
 vendorRouter
   .route("/product-list")
-  .get(sanitize(), vendorController.getAllVendorProduct);
+  .get(sanitize(), jwtStrategy, vendorController.getAllVendorProduct);
 vendorRouter
   .route("/product/getAllProductById/:id")
-  .get(sanitize(), vendorController.getProductByVendor);
+  .get(sanitize(), jwtStrategy, vendorController.getProductByVendor);
 vendorRouter
   .route("/update")
-  .post(upload.single("vendorImage"), vendorController.vendorUpdate);
+  .post(jwtStrategy, requireAdmin, upload.single("vendorImage"), vendorController.vendorUpdate);
 vendorRouter
   .route("/delete/:id")
-  .delete(sanitize(), vendorController.vendorDelete);
+  .delete(sanitize(), jwtStrategy, requireAdmin, vendorController.vendorDelete);
 vendorRouter
   .route("/product-delete")
-  .post(sanitize(), vendorController.vendorProductDelete);
-vendorRouter.route("/product-add").post(vendorController.vendorAddProduct);
+  .post(sanitize(), jwtStrategy, vendorController.vendorProductDelete);
+vendorRouter.route("/product-add").post(jwtStrategy, vendorController.vendorAddProduct);
 // vendorRouter.route("/wordtojson").post(upload.single("vendorImage"), vendorController.extractClustersFromDocx);
 
 module.exports = { vendorRouter };

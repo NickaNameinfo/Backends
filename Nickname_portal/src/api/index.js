@@ -18,7 +18,16 @@ const requestStoreRouter =
   require("./resources/requestStores/index").requestStoreRouter;
 const billingRouter = require("./resources/billing").billingRouter;
 
+// Import authentication middleware
+const { requireAuth } = require("../middleware/requireAuth");
+
 const restRouter = express.Router();
+
+// Apply global authentication middleware to all routes
+// This ensures all APIs require a valid access token except public routes
+restRouter.use(requireAuth);
+
+// Define all routes
 restRouter.use("/auth", authRouter);
 restRouter.use("/customer", customerRouter);
 restRouter.use("/location", locationRouter);

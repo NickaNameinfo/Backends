@@ -247,8 +247,9 @@ module.exports = {
       // Set the cookie
       res.cookie("XSRF-token", token, {
         expires: new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000), // Cookie expiration set to 30 days
-        httpOnly: true, // Secure the cookie
+        httpOnly: true, // Secure the cookie - prevents XSS attacks
         secure: config.app.secure, // Use HTTPS if the app is in secure mode
+        sameSite: 'Lax', // CSRF protection - Lax allows top-level navigation
       });
 
       // Send the response

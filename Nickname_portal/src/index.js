@@ -7,10 +7,13 @@ const scheduler = require("./scheduler");
 const path = require("path");
 const cors = require("cors");
 const db = require("./models");
+const { apiRateLimiter } = require("./middleware/rateLimiter");
+const { securityValidator } = require("./middleware/securityValidator");
 global.appRoot = path.resolve(__dirname);
 const express = require('express');
-const PORT = 5000;
+const PORT = 8000;
 const app = appManager.setup(config);
+
 /*cors handling*/
 app.use(
   cors({
@@ -19,6 +22,17 @@ app.use(
   })
 );
 app.options("*", cors());
+
+// Security middleware - Apply globally
+app.use(securityValidator({
+  logThreats: true,
+  blockRequest: true,
+  whitelistFields: ['password', 'token', 'csrfToken'], // Fields that may contain special characters
+}));
+
+// Rate limiting - Apply to all API routes
+app.use("/api", apiRateLimiter);
+
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
 /* Route handling */
