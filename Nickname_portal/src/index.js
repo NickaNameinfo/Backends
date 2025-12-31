@@ -11,7 +11,7 @@ const { apiRateLimiter } = require("./middleware/rateLimiter");
 const { securityValidator } = require("./middleware/securityValidator");
 global.appRoot = path.resolve(__dirname);
 const express = require('express');
-const PORT = 8000;
+const PORT = 5000;
 const app = appManager.setup(config);
 
 /*cors handling*/
