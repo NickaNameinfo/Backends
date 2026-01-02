@@ -24,14 +24,14 @@ app.use(
 app.options("*", cors());
 
 // Security middleware - Apply globally
-app.use(securityValidator({
-  logThreats: true,
-  blockRequest: true,
-  whitelistFields: ['password', 'token', 'csrfToken'], // Fields that may contain special characters
-}));
+// app.use(securityValidator({
+//   logThreats: true,
+//   blockRequest: true,
+//   whitelistFields: ['password', 'token', 'csrfToken'], // Fields that may contain special characters
+// }));
 
 // Rate limiting - Apply to all API routes
-app.use("/api", apiRateLimiter);
+// app.use("/api", apiRateLimiter);
 
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
