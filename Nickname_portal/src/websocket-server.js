@@ -6,33 +6,93 @@
 
 const { Server } = require('socket.io');
 const http = require('http');
+const https = require('https');
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 
 // Configuration
 const WS_PORT = process.env.WS_PORT || 3001;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const WS_USE_HTTPS = process.env.WS_USE_HTTPS === 'true' || NODE_ENV === 'production';
+
+// Allowed origins for CORS (production domain)
+const ALLOWED_ORIGINS = process.env.WS_ALLOWED_ORIGINS 
+  ? process.env.WS_ALLOWED_ORIGINS.split(',')
+  : ['https://admin.nicknameportal.shop', 'http://localhost:5173', 'http://localhost:3000', '*'];
+
 let lastBarcode = '';
 let lastScanTime = null;
 let io = null; // Will be initialized after server creation
 
 // Create Express app for health check endpoint
 const app = express();
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST']
-}));
 
-// Create HTTP server
-const server = http.createServer(app);
+// CORS configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || ALLOWED_ORIGINS.includes('*') || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST'],
+  credentials: true
+};
 
-// Initialize Socket.IO
+app.use(cors(corsOptions));
+
+// Create HTTP or HTTPS server
+let server;
+if (WS_USE_HTTPS) {
+  // Try to load SSL certificates (if available)
+  const certPath = process.env.SSL_CERT_PATH || path.join(__dirname, '..', 'ssl', 'cert.pem');
+  const keyPath = process.env.SSL_KEY_PATH || path.join(__dirname, '..', 'ssl', 'key.pem');
+  
+  try {
+    if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+      const options = {
+        cert: fs.readFileSync(certPath),
+        key: fs.readFileSync(keyPath)
+      };
+      server = https.createServer(options, app);
+      console.log('[WebSocket] Using HTTPS with SSL certificates');
+    } else {
+      console.warn('[WebSocket] HTTPS requested but certificates not found, falling back to HTTP');
+      console.warn(`[WebSocket] Expected cert at: ${certPath}`);
+      console.warn(`[WebSocket] Expected key at: ${keyPath}`);
+      server = http.createServer(app);
+    }
+  } catch (error) {
+    console.error('[WebSocket] Error loading SSL certificates:', error.message);
+    console.warn('[WebSocket] Falling back to HTTP');
+    server = http.createServer(app);
+  }
+} else {
+  server = http.createServer(app);
+}
+
+// Initialize Socket.IO with proper CORS
 io = new Server(server, {
   cors: {
-    origin: '*', // Allow all origins (restrict in production)
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin || ALLOWED_ORIGINS.includes('*') || ALLOWED_ORIGINS.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ['GET', 'POST'],
     credentials: true
   },
-  transports: ['websocket', 'polling']
+  transports: ['websocket', 'polling'],
+  allowEIO3: true, // Allow Engine.IO v3 clients
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 // Health check endpoint (after io is initialized)
@@ -155,9 +215,16 @@ server.on('error', (error) => {
 
 // Start server
 const startWebSocketServer = () => {
-  server.listen(WS_PORT, () => {
+  server.listen(WS_PORT, '0.0.0.0', () => {
+    const protocol = WS_USE_HTTPS ? 'https' : 'http';
     console.log(`[WebSocket] Barcode WebSocket server running on port ${WS_PORT}`);
-    console.log(`[WebSocket] Health check: http://localhost:${WS_PORT}/health`);
+    console.log(`[WebSocket] Protocol: ${protocol.toUpperCase()}`);
+    console.log(`[WebSocket] Health check: ${protocol}://localhost:${WS_PORT}/health`);
+    console.log(`[WebSocket] Allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
+    
+    if (NODE_ENV === 'production') {
+      console.log(`[WebSocket] Production mode - ensure reverse proxy is configured for WSS`);
+    }
   });
 };
 
