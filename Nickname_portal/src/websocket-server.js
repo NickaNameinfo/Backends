@@ -79,10 +79,15 @@ if (WS_USE_HTTPS) {
 io = new Server(server, {
   cors: {
     origin: function (origin, callback) {
+      // Log origin for debugging
+      console.log(`[WebSocket] Connection attempt from origin: ${origin || 'no origin'}`);
+      
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin || ALLOWED_ORIGINS.includes('*') || ALLOWED_ORIGINS.includes(origin)) {
         callback(null, true);
       } else {
+        console.warn(`[WebSocket] CORS blocked origin: ${origin}`);
+        console.warn(`[WebSocket] Allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
         callback(new Error('Not allowed by CORS'));
       }
     },
@@ -92,7 +97,12 @@ io = new Server(server, {
   transports: ['websocket', 'polling'],
   allowEIO3: true, // Allow Engine.IO v3 clients
   pingTimeout: 60000,
-  pingInterval: 25000
+  pingInterval: 25000,
+  // Add connection state recovery
+  connectionStateRecovery: {
+    maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutes
+    skipMiddlewares: true
+  }
 });
 
 // Health check endpoint (after io is initialized)
@@ -108,18 +118,36 @@ app.get('/health', (req, res) => {
 // Store connected clients info
 const connectedClients = new Map();
 
+// Handle connection attempts (before connection is established)
+io.engine.on('connection_error', (err) => {
+  console.error('[WebSocket] Engine connection error:', err.message);
+  console.error('[WebSocket] Error details:', {
+    req: err.req?.headers?.origin,
+    code: err.code,
+    context: err.context
+  });
+});
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   const clientId = socket.id;
   const clientInfo = {
     id: clientId,
     connectedAt: new Date(),
-    type: 'unknown' // 'scanner' or 'billing'
+    type: 'unknown', // 'scanner' or 'billing'
+    ip: socket.handshake.address,
+    origin: socket.handshake.headers.origin,
+    userAgent: socket.handshake.headers['user-agent']
   };
   
   connectedClients.set(clientId, clientInfo);
   
   console.log(`[WebSocket] Client connected: ${clientId}`);
+  console.log(`[WebSocket] Client details:`, {
+    ip: clientInfo.ip,
+    origin: clientInfo.origin,
+    userAgent: clientInfo.userAgent
+  });
   console.log(`[WebSocket] Total connected clients: ${connectedClients.size}`);
 
   // Handle client type identification
@@ -195,6 +223,11 @@ io.on('connection', (socket) => {
     console.log(`[WebSocket] Total connected clients: ${connectedClients.size}`);
   });
 
+  // Handle connection errors
+  socket.on('connect_error', (error) => {
+    console.error(`[WebSocket] Connection error from client ${clientId}:`, error.message);
+  });
+
   // Handle errors
   socket.on('error', (error) => {
     console.error(`[WebSocket] Error from client ${clientId}:`, error);
@@ -240,11 +273,138 @@ const stopWebSocketServer = () => {
   });
 };
 
+// Setup Socket.IO on existing HTTP server (for integration with main Express app)
+const setupSocketIO = (existingIO) => {
+  // Use the existing io instance
+  io = existingIO;
+  
+  // Apply the same connection handling
+  io.on('connection', (socket) => {
+    const clientId = socket.id;
+    const clientInfo = {
+      id: clientId,
+      connectedAt: new Date(),
+      type: 'unknown',
+      ip: socket.handshake.address,
+      origin: socket.handshake.headers.origin,
+      userAgent: socket.handshake.headers['user-agent']
+    };
+    
+    connectedClients.set(clientId, clientInfo);
+    
+    console.log(`[WebSocket] Client connected: ${clientId}`);
+    console.log(`[WebSocket] Client details:`, {
+      ip: clientInfo.ip,
+      origin: clientInfo.origin,
+      userAgent: clientInfo.userAgent
+    });
+    console.log(`[WebSocket] Total connected clients: ${connectedClients.size}`);
+
+    // Handle client type identification
+    socket.on('client-type', (type) => {
+      if (clientInfo) {
+        clientInfo.type = type;
+        console.log(`[WebSocket] Client ${clientId} identified as: ${type}`);
+      }
+    });
+
+    // Handle barcode scanning from mobile scanner
+    socket.on('scan-product', (data) => {
+      const barcode = typeof data === 'string' ? data : (data?.barcode || data?.code || '');
+      
+      if (!barcode) {
+        console.warn(`[WebSocket] Received empty barcode from ${clientId}`);
+        return;
+      }
+
+      lastBarcode = barcode;
+      lastScanTime = Date.now();
+
+      console.log(`[WebSocket] Barcode received from ${clientId}: ${barcode}`);
+
+      io.emit('product-barcode', {
+        barcode: barcode,
+        timestamp: lastScanTime,
+        scannerId: clientId
+      });
+
+      socket.emit('barcode-sent', {
+        success: true,
+        barcode: barcode,
+        timestamp: lastScanTime
+      });
+    });
+
+    // Handle manual barcode input
+    socket.on('manual-barcode', (data) => {
+      const barcode = typeof data === 'string' ? data : (data?.barcode || '');
+      
+      if (!barcode) {
+        socket.emit('error', { message: 'Barcode is required' });
+        return;
+      }
+
+      lastBarcode = barcode;
+      lastScanTime = Date.now();
+
+      console.log(`[WebSocket] Manual barcode from ${clientId}: ${barcode}`);
+
+      io.emit('product-barcode', {
+        barcode: barcode,
+        timestamp: lastScanTime,
+        scannerId: clientId,
+        source: 'manual'
+      });
+
+      socket.emit('barcode-sent', {
+        success: true,
+        barcode: barcode,
+        timestamp: lastScanTime
+      });
+    });
+
+    // Handle disconnect
+    socket.on('disconnect', (reason) => {
+      connectedClients.delete(clientId);
+      console.log(`[WebSocket] Client disconnected: ${clientId}, reason: ${reason}`);
+      console.log(`[WebSocket] Total connected clients: ${connectedClients.size}`);
+    });
+
+    // Handle connection errors
+    socket.on('connect_error', (error) => {
+      console.error(`[WebSocket] Connection error from client ${clientId}:`, error.message);
+    });
+
+    // Handle errors
+    socket.on('error', (error) => {
+      console.error(`[WebSocket] Error from client ${clientId}:`, error);
+    });
+
+    // Send connection confirmation
+    socket.emit('connected', {
+      clientId: clientId,
+      serverTime: new Date().toISOString(),
+      lastBarcode: lastBarcode
+    });
+  });
+
+  // Handle connection errors at engine level
+  io.engine.on('connection_error', (err) => {
+    console.error('[WebSocket] Engine connection error:', err.message);
+    console.error('[WebSocket] Error details:', {
+      req: err.req?.headers?.origin,
+      code: err.code,
+      context: err.context
+    });
+  });
+};
+
 // Export for use in main app
 module.exports = {
   io,
   startWebSocketServer,
   stopWebSocketServer,
+  setupSocketIO, // New function for integration
   getLastBarcode: () => lastBarcode,
   getLastScanTime: () => lastScanTime,
   getConnectedClients: () => connectedClients.size
