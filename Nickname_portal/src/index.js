@@ -9,6 +9,7 @@ const cors = require("cors");
 const db = require("./models");
 const { apiRateLimiter } = require("./middleware/rateLimiter");
 const { securityValidator } = require("./middleware/securityValidator");
+const { startWebSocketServer, stopWebSocketServer } = require("./websocket-server");
 global.appRoot = path.resolve(__dirname);
 const express = require('express');
 const PORT = 5000;
@@ -59,6 +60,35 @@ app.use((error, req, res, next) => {
 });
 
 /* Start Listening service */
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server is running at PORT http://localhost:${PORT}`);
+});
+
+// Start WebSocket server for barcode scanning
+try {
+  startWebSocketServer();
+  console.log('WebSocket server started successfully');
+} catch (error) {
+  console.error('Failed to start WebSocket server:', error);
+}
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  server.close(() => {
+    stopWebSocketServer().then(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully...');
+  server.close(() => {
+    stopWebSocketServer().then(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  });
 });
