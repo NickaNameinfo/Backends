@@ -12,9 +12,7 @@ const { securityValidator } = require("./middleware/securityValidator");
 const { startWebSocketServer, stopWebSocketServer } = require("./websocket-server");
 global.appRoot = path.resolve(__dirname);
 const express = require('express');
-// Note: Port 5000 is used by mail server (nicknameinfo.net)
-// Update this to your actual port if different
-const PORT = process.env.PORT || 8000;
+const PORT = 5000;
 const app = appManager.setup(config);
 
 /*cors handling*/
