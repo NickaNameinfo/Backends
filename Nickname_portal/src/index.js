@@ -9,11 +9,12 @@ const cors = require("cors");
 const db = require("./models");
 const { apiRateLimiter } = require("./middleware/rateLimiter");
 const { securityValidator } = require("./middleware/securityValidator");
-const { Server } = require('socket.io');
-const { setupSocketIO } = require("./websocket-server");
+const { startWebSocketServer, stopWebSocketServer } = require("./websocket-server");
 global.appRoot = path.resolve(__dirname);
 const express = require('express');
-const PORT = 5000;
+// Note: Port 5000 is used by mail server (nicknameinfo.net)
+// Update this to your actual port if different
+const PORT = process.env.PORT || 8000;
 const app = appManager.setup(config);
 
 /*cors handling*/
@@ -65,40 +66,21 @@ const server = app.listen(PORT, () => {
   console.log(`Server is running at PORT http://localhost:${PORT}`);
 });
 
-// Initialize Socket.IO on the same server (integrated approach)
-// This allows WebSocket to work through the same Nginx proxy on port 5000
-const io = new Server(server, {
-  cors: {
-    origin: [
-      'https://admin.nicknameportal.shop',
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://localhost:5174'
-    ],
-    methods: ['GET', 'POST'],
-    credentials: true
-  },
-  path: '/socket.io',
-  transports: ['websocket', 'polling'],
-  allowEIO3: true,
-  pingTimeout: 60000,
-  pingInterval: 25000
-});
-
-// Setup WebSocket handlers for barcode scanning
+// Start WebSocket server on port 3001 (separate server)
+// This matches your existing Nginx configuration
 try {
-  setupSocketIO(io);
-  console.log('[WebSocket] Integrated on main server (port 5000)');
-  console.log('[WebSocket] Connect to: https://admin.nicknameportal.shop/socket.io');
+  startWebSocketServer();
+  console.log('[WebSocket] Server started on port 3001');
+  console.log('[WebSocket] Nginx should proxy /socket.io/ to http://localhost:3001');
 } catch (error) {
-  console.error('[WebSocket] Failed to setup:', error);
+  console.error('[WebSocket] Failed to start WebSocket server:', error);
 }
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully...');
-  io.close(() => {
-    server.close(() => {
+  server.close(() => {
+    stopWebSocketServer().then(() => {
       console.log('Server closed');
       process.exit(0);
     });
@@ -107,8 +89,8 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully...');
-  io.close(() => {
-    server.close(() => {
+  server.close(() => {
+    stopWebSocketServer().then(() => {
       console.log('Server closed');
       process.exit(0);
     });
