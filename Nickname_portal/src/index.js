@@ -9,7 +9,8 @@ const cors = require("cors");
 const db = require("./models");
 const { apiRateLimiter } = require("./middleware/rateLimiter");
 const { securityValidator } = require("./middleware/securityValidator");
-const { startWebSocketServer, stopWebSocketServer } = require("./websocket-server");
+const { Server } = require('socket.io');
+const { setupSocketIO } = require("./websocket-server");
 global.appRoot = path.resolve(__dirname);
 const express = require('express');
 const PORT = 5000;
@@ -64,19 +65,40 @@ const server = app.listen(PORT, () => {
   console.log(`Server is running at PORT http://localhost:${PORT}`);
 });
 
-// Start WebSocket server for barcode scanning
+// Initialize Socket.IO on the same server (integrated approach)
+// This allows WebSocket to work through the same Nginx proxy on port 5000
+const io = new Server(server, {
+  cors: {
+    origin: [
+      'https://admin.nicknameportal.shop',
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://localhost:5174'
+    ],
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  path: '/socket.io',
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000
+});
+
+// Setup WebSocket handlers for barcode scanning
 try {
-  startWebSocketServer();
-  console.log('WebSocket server started successfully');
+  setupSocketIO(io);
+  console.log('[WebSocket] Integrated on main server (port 5000)');
+  console.log('[WebSocket] Connect to: https://admin.nicknameportal.shop/socket.io');
 } catch (error) {
-  console.error('Failed to start WebSocket server:', error);
+  console.error('[WebSocket] Failed to setup:', error);
 }
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully...');
-  server.close(() => {
-    stopWebSocketServer().then(() => {
+  io.close(() => {
+    server.close(() => {
       console.log('Server closed');
       process.exit(0);
     });
@@ -85,8 +107,8 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully...');
-  server.close(() => {
-    stopWebSocketServer().then(() => {
+  io.close(() => {
+    server.close(() => {
       console.log('Server closed');
       process.exit(0);
     });
