@@ -25,6 +25,8 @@ const productRouter = express.Router();
 productRouter
   .route("/add")
   .post(
+    // Optional file upload - multer will not error if no file is provided
+    upload.single("photo"),
     // sanitize(),
     // jwtStrategy,
     productController.addProduct

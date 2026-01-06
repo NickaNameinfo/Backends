@@ -90,6 +90,19 @@ module.exports = {
         }
       }
 
+      // Handle photo: prioritize uploaded file, then body photo, then empty string
+      // If file was uploaded via multer, use req.file.path
+      // If photo URL was provided in request body, use that
+      // Otherwise, use empty string
+      let productPhoto = "";
+      if (req.file) {
+        // File was uploaded via multer - use the file path
+        productPhoto = req.file.path;
+      } else if (photo) {
+        // Photo URL was provided in request body (e.g., from external URL or existing image)
+        productPhoto = photo;
+      }
+
       return db.product
         .create({
           categoryId: Number(categoryId),
@@ -111,7 +124,7 @@ module.exports = {
           grandTotal: grand_total || null,
           netPrice: netPrice,
           paymentMode: paymentMode,
-          photo: photo ? photo : "",
+          photo: productPhoto,
           createdId: createdId,
           createdType: createdType,
           isEnableEcommerce: isEnableEcommerce,

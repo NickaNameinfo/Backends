@@ -297,15 +297,34 @@ module.exports = {
    */
   async uploadFileController(req, res) { // New controller function
     try {
+      // Debug: Log what we received
+      console.log("=== IN CONTROLLER ===");
+      console.log("req.body:", req.body);
+      console.log("req.body keys:", Object.keys(req.body || {}));
+      console.log("req.file:", req.file ? "File exists" : "No file");
+      
       // 1. Get the store name from the request body or query parameters
-      // *** ASSUMING storeName is passed in the request body ***
-      const storeName = req.body.storeName;
+      // Try multiple variations in case of case sensitivity or different field names
+      const storeName = req.body?.storeName || 
+                       req.body?.storename || 
+                       req.body?.store_name ||
+                       req.query?.storeName || 
+                       req.query?.storename;
 
       // Basic validation for the required dynamic directory/store name
       if (!storeName) {
+        console.error("Store name missing!");
+        console.error("req.body:", JSON.stringify(req.body));
+        console.error("req.query:", JSON.stringify(req.query));
         return res.status(400).send({
           success: false,
           message: "Store name is missing. Cannot create file directory.",
+          debug: {
+            bodyKeys: Object.keys(req.body || {}),
+            body: req.body,
+            query: req.query,
+            hasFile: !!req.file
+          }
         });
       }
 
