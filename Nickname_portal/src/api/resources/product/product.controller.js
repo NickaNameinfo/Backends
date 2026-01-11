@@ -5,6 +5,24 @@ const AWS = require("aws-sdk");
 const db = require("../../../models");
 const BUCKET_NAME = "bangmobileapplication";
 
+/**
+ * Helper function to extract vendor/store ID from authenticated user
+ * Priority: vendorId > storeId
+ * Returns null if neither is available
+ */
+const getVendorStoreId = (user) => {
+  if (!user) {
+    return null;
+  }
+  
+  // Convert to number if it's a string
+  const vendorId = user.vendorId ? (isNaN(user.vendorId) ? null : parseInt(user.vendorId)) : null;
+  const storeId = user.storeId ? (isNaN(user.storeId) ? null : parseInt(user.storeId)) : null;
+  
+  // Priority: vendorId first, then storeId
+  return vendorId || storeId || null;
+};
+
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
 // const s3Client = new S3Client({
@@ -43,6 +61,13 @@ module.exports = {
 
   async addProduct(req, res, next) {
     try {
+      // Extract vendor/store ID from authenticated user
+      const vendorStoreId = getVendorStoreId(req.user);
+      
+      // If user is authenticated, use their vendor/store ID
+      // Otherwise, use createdId from request body (for backward compatibility)
+      const finalCreatedId = vendorStoreId || req.body.createdId;
+
       const {
         categoryId,
         subCategoryId,
@@ -73,7 +98,8 @@ module.exports = {
         serviceType,
         size,
         weight,
-        sizeUnitSizeMap
+        sizeUnitSizeMap,
+        clientId
       } = req.body;
       // Handle description field (map to desc if description is provided)
       const productDesc = desc || description || "";
@@ -125,15 +151,17 @@ module.exports = {
           netPrice: netPrice,
           paymentMode: paymentMode,
           photo: productPhoto,
-          createdId: createdId,
-          createdType: createdType,
+          createdId: finalCreatedId, // Auto-set from session or use provided
+          createdType: createdType || "Client",
           isEnableEcommerce: isEnableEcommerce,
           isEnableCustomize: isEnableCustomize,
           isBooking: isBooking,
           serviceType: serviceType,
           size: size || null,
           weight: weight || null,
-          sizeUnitSizeMap: parsedSizeUnitSizeMap
+          sizeUnitSizeMap: parsedSizeUnitSizeMap,
+          // Note: products table doesn't have vendorId column, using createdId instead
+          clientId: clientId || null
         })
         .then((product) => {
           res.status(200).json({
@@ -177,16 +205,41 @@ module.exports = {
 
   async getAllProductList(req, res, next) {
     try {
+      // Extract vendor/store ID from authenticated user
+      const vendorStoreId = getVendorStoreId(req.user);
+      const { clientId, createdType, categoryId } = req.query;
+
+      // Build where clause
+      const whereClause = { status: 1 };
+
+      // Filter by vendor/store ID if user is authenticated
+      if (vendorStoreId) {
+        whereClause.createdId = vendorStoreId;
+      }
+
+      // Add optional filters
+      if (clientId) {
+        whereClause.clientId = parseInt(clientId);
+      }
+
+      if (createdType) {
+        whereClause.createdType = createdType;
+      }
+
+      if (categoryId) {
+        whereClause.categoryId = parseInt(categoryId);
+      }
+
       db.product
         .findAll({
-          where: { status: 1 },
+          where: whereClause,
           order: [["createdAt", "DESC"]],
           include: [
             {
               model: db.store, // Include the associated store
               attributes: ["id", "status"], // Fetch only relevant store fields
               where: { status: 1 }, // Filter active stores
-              required: true, // Ensure products without active stores are excluded
+              required: false, // Changed to false to allow products without stores
             },
             {
               model: db.subcategories,
@@ -197,6 +250,19 @@ module.exports = {
                   attributes: ["id", "name"],
                 },
               ],
+              required: false,
+            },
+            {
+              model: db.user,
+              as: "client",
+              attributes: ["id", "firstName", "lastName", "email", "logo"],
+              required: false,
+            },
+            {
+              model: db.category,
+              as: "category",
+              attributes: ["id", "name"],
+              required: false,
             },
           ],
         })
@@ -213,6 +279,9 @@ module.exports = {
 
   async update(req, res, next) {
     try {
+      // Extract vendor/store ID from authenticated user
+      const vendorStoreId = getVendorStoreId(req.user);
+      
       const {
         id,
         productId,
@@ -247,10 +316,28 @@ module.exports = {
         weight,
         sizeUnitSizeMap
       } = req.body;
+
+      // Build where clause for finding product
+      const whereClause = { id };
+      
+      // If user is authenticated, verify ownership
+      if (vendorStoreId) {
+        whereClause.createdId = vendorStoreId;
+      }
+
       db.product
-        .findOne({ where: { id: id } })
+        .findOne({ where: whereClause })
         .then((product) => {
           if (product) {
+            // Verify ownership if user is authenticated
+            if (vendorStoreId) {
+              if (product.createdId !== vendorStoreId) {
+                return res.status(403).json({
+                  success: false,
+                  message: "Access denied. You can only modify products belonging to your store/vendor."
+                });
+              }
+            }
             // Handle description field (map to desc if description is provided)
             const productDesc = desc !== undefined ? desc : (description !== undefined ? description : product.desc);
             
@@ -341,12 +428,36 @@ module.exports = {
   },
   async getProductListById(req, res, next) {
     try {
+      // Extract vendor/store ID from authenticated user
+      const vendorStoreId = getVendorStoreId(req.user);
+      const { id } = req.params;
+
+      // Build where clause
+      const whereClause = { id };
+
+      // If user is authenticated, verify ownership
+      if (vendorStoreId) {
+        whereClause.createdId = vendorStoreId;
+      }
+
       const product = await db.product.findOne({
-        where: { id: req.params.id },
+        where: whereClause,
         include: [
           {
             model: db.productphoto,
             attributes: ["id", "imgUrl"],
+          },
+          {
+            model: db.category,
+            as: "category",
+            attributes: ["id", "name"],
+            required: false,
+          },
+          {
+            model: db.user,
+            as: "client",
+            attributes: ["id", "firstName", "lastName", "email", "logo"],
+            required: false,
           },
         ],
         order: [["createdAt", "DESC"]],
@@ -355,7 +466,12 @@ module.exports = {
       if (!product) {
         return res
           .status(404)
-          .json({ success: false, message: "Product not found" });
+          .json({ 
+            success: false, 
+            message: vendorStoreId 
+              ? "Product not found or does not belong to your store" 
+              : "Product not found" 
+          });
       }
 
       res.status(200).json({ success: true, data: product });

@@ -71,6 +71,10 @@ module.exports = (sequelize, DataTypes) => {
 
   product.associate = function (models) {
     // Defining associations
+    product.belongsTo(models.category, {
+      foreignKey: "categoryId",
+      as: "category",
+    });
     product.belongsTo(models.subcategories, {
       foreignKey: "subCategoryId",
     });
@@ -83,6 +87,11 @@ module.exports = (sequelize, DataTypes) => {
     product.hasMany(models.store_product, { foreignKey: "productId" });
     product.hasMany(models.productFeedback, { foreignKey: "productId" });
     product.belongsTo(models.store, { foreignKey: "createdId" });
+    product.belongsTo(models.user, { 
+      foreignKey: "createdId", 
+      as: "client",
+      constraints: false, // Allow this association even though createdId is also used for store
+    });
   };
 
   return product;

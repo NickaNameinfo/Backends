@@ -22,15 +22,45 @@ passport.use('user-jwt', new JwtStrategy({
     secretOrKey: config.app.secret,
 }, async (payload, done) => {
     try {
-        var user = await db.user.findOne({ where: { id: payload.sub }});
-        
         if (new Date(payload.exp) < new Date()) {
             return done('expired', false);
+        }
+
+        // Check if it's a sub-user (check payload for isSubUser flag or try subUser table first)
+        // For now, try user table first, then subUser
+        var user = await db.user.findOne({ where: { id: payload.sub }});
+        let isSubUser = false;
+
+        if (!user) {
+            user = await db.subUser.findOne({ where: { id: payload.sub }});
+            isSubUser = true;
         }
 
         if (!user) {
             return done('user', false);
         }
+
+        // For sub-users, check status and load menu permissions
+        if (isSubUser) {
+            if (user.status !== 'approved') {
+                return done('user', false);
+            }
+            user.dataValues.isSubUser = true;
+            // Get menu permissions
+            const permissions = await db.subUserMenuPermission.findAll({
+                where: { subUserId: user.id }
+            });
+            const menuPermissions = {};
+            permissions.forEach(perm => {
+                menuPermissions[perm.menuKey] = perm.enabled;
+            });
+            user.dataValues.menuPermissions = menuPermissions;
+            // Set role based on vendorId or storeId
+            user.dataValues.role = user.vendorId ? '2' : '3';
+        } else {
+            user.dataValues.isSubUser = false;
+        }
+
         done(null, user);
     } catch (error) {
         done(error, false);
@@ -43,32 +73,76 @@ passport.use('user-local', new LocalStrategy({
     passReqToCallback: true
 }, async (req, email, password, done) => {
     try {
-        const user = await db.user.findOne({ where: { email: email } });
+        // Check regular users first
+        let user = await db.user.findOne({ where: { email: email } });
+        let isSubUser = false;
+
+        // If not found, check sub-users
+        if (!user) {
+            user = await db.subUser.findOne({ where: { email: email } });
+            isSubUser = true;
+        }
+
         if (!user) {
             return done(null, false);
         }
 
-        if(user.status == 'inactive'){
-            return done('invalid', false);
-        }
+        // For sub-users, check status
+        if (isSubUser) {
+            if (user.status === 'pending') {
+                return done('pending', false);
+            }
+            if (user.status === 'rejected') {
+                return done('rejected', false);
+            }
+        } else {
+            // Regular user status check
+            if (user.status == 'inactive') {
+                return done('invalid', false);
+            }
 
-        if (user.attempt == 5) {
-            return done('attempt', false);
+            if (user.attempt == 5) {
+                return done('attempt', false);
+            }
         }
         
-        var isMatch=  bcrypt.compareSync(password, user.password);
+        var isMatch = bcrypt.compareSync(password, user.password);
 
         if (!isMatch) {
-            user.update({
-                attempt: user.attempt + 1
-            })
-            return done('attempt:' + (5 - user.attempt), false);
+            if (!isSubUser && user.attempt !== undefined) {
+                user.update({
+                    attempt: user.attempt + 1
+                });
+                return done('attempt:' + (5 - user.attempt), false);
+            }
+            return done(null, false);
         } else {
-            user.update({ attempt: 0 })
+            if (!isSubUser && user.attempt !== undefined) {
+                user.update({ attempt: 0 });
+            }
         }
+
+        // Add sub-user flag and menu permissions to user object
+        if (isSubUser) {
+            user.dataValues.isSubUser = true;
+            // Get menu permissions
+            const permissions = await db.subUserMenuPermission.findAll({
+                where: { subUserId: user.id }
+            });
+            const menuPermissions = {};
+            permissions.forEach(perm => {
+                menuPermissions[perm.menuKey] = perm.enabled;
+            });
+            user.dataValues.menuPermissions = menuPermissions;
+            // Set role based on vendorId or storeId
+            user.dataValues.role = user.vendorId ? '2' : '3';
+        } else {
+            user.dataValues.isSubUser = false;
+        }
+
         done(null, user);
     } catch (error) {
-        console.log(error)
+        console.log(error);
         done(error, false);
     }
 }));

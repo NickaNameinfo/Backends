@@ -12,9 +12,13 @@ module.exports = {
         products,
         subtotal,
         discount,
+        discountPercent,
         tax,
+        taxPercent,
         total,
         notes,
+        invoiceFormatId,
+        invoiceType,
       } = req.body;
 
       // Determine storeId from currentStoreUserId or currentVendorUserId
@@ -26,6 +30,48 @@ module.exports = {
         });
       }
 
+      // Determine invoice format ID
+      let finalInvoiceFormatId = invoiceFormatId;
+
+      // If no format specified, try to get from store/vendor assignment
+      if (!finalInvoiceFormatId) {
+        const store = await db.store.findByPk(storeId);
+        if (store) {
+          const storeFormat = await db.storeInvoiceFormat.findOne({
+            where: { storeId },
+          });
+          if (storeFormat) {
+            finalInvoiceFormatId = storeFormat.formatId;
+          }
+        }
+
+        // If still no format, try vendor
+        if (!finalInvoiceFormatId && currentVendorUserId) {
+          const vendorFormat = await db.vendorInvoiceFormat.findOne({
+            where: { vendorId: String(currentVendorUserId) },
+          });
+          if (vendorFormat) {
+            finalInvoiceFormatId = vendorFormat.formatId;
+          }
+        }
+
+        // If still no format, use default
+        if (!finalInvoiceFormatId) {
+          const defaultFormat = await db.invoiceFormat.findOne({
+            where: { isDefault: true },
+          });
+          if (defaultFormat) {
+            finalInvoiceFormatId = defaultFormat.id;
+          }
+        }
+      }
+
+      // Validate invoiceType
+      const validInvoiceTypes = ['DC', 'Invoice', 'Quotation'];
+      const finalInvoiceType = invoiceType && validInvoiceTypes.includes(invoiceType) 
+        ? invoiceType 
+        : 'Invoice'; // Default to 'Invoice' if not provided or invalid
+
       // Create the bill
       const bill = await db.bill.create({
         storeId: storeId || currentVendorUserId,
@@ -35,9 +81,13 @@ module.exports = {
         products: products,
         subtotal: subtotal || 0,
         discount: discount || 0,
+        discountPercent: discountPercent || 0,
         tax: tax || 0,
+        taxPercent: taxPercent || 0,
         total: total || 0,
         notes: notes || "",
+        invoiceFormatId: finalInvoiceFormatId || null,
+        invoiceType: finalInvoiceType,
       });
 
       res.status(201).json({ 
@@ -69,6 +119,7 @@ module.exports = {
         tax,
         total,
         notes,
+        invoiceType,
       } = req.body;
 
       if (!id) {
@@ -109,6 +160,19 @@ module.exports = {
       if (tax !== undefined) updateData.tax = tax;
       if (total !== undefined) updateData.total = total;
       if (notes !== undefined) updateData.notes = notes;
+      
+      // Validate and update invoiceType if provided
+      if (invoiceType !== undefined) {
+        const validInvoiceTypes = ['DC', 'Invoice', 'Quotation'];
+        if (validInvoiceTypes.includes(invoiceType)) {
+          updateData.invoiceType = invoiceType;
+        } else {
+          return res.status(400).json({
+            success: false,
+            errors: [`Invalid invoiceType. Must be one of: ${validInvoiceTypes.join(', ')}`]
+          });
+        }
+      }
 
       // Update the bill
       await db.bill.update(updateData, {
@@ -171,7 +235,8 @@ module.exports = {
         where: { id: id },
         include: [
           { model: db.store, required: false },
-          { model: db.vendor, as: 'vendor', required: false }
+          { model: db.vendor, as: 'vendor', required: false },
+          { model: db.invoiceFormat, as: 'invoiceFormat', required: false }
         ]
       });
 

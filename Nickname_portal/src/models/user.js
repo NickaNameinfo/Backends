@@ -14,6 +14,10 @@ module.exports = (sequelize, DataTypes) => {
       vendorId: DataTypes.STRING,
       storeId: DataTypes.STRING,
       plan: DataTypes.STRING,
+      branches: DataTypes.TEXT, // Store branches as JSON string
+      city: DataTypes.STRING,
+      gstNumber: DataTypes.STRING,
+      logo: DataTypes.STRING,
     },
     {}
   );

@@ -8,14 +8,26 @@ module.exports = (sequelize, DataTypes) => {
     products: DataTypes.JSON,
     subtotal: DataTypes.DECIMAL(10, 2),
     discount: DataTypes.DECIMAL(10, 2),
+    discountPercent: DataTypes.DECIMAL(10, 2),
     tax: DataTypes.DECIMAL(10, 2),
+    taxPercent: DataTypes.DECIMAL(10, 2),
     total: DataTypes.DECIMAL(10, 2),
     notes: DataTypes.TEXT,
+    invoiceFormatId: DataTypes.INTEGER,
+    invoiceType: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: 'Invoice',
+      validate: {
+        isIn: [['DC', 'Invoice', 'Quotation']]
+      }
+    },
   }, {});
   Bill.associate = function(models) {
     // associations can be defined here
     models.bill.belongsTo(models.store, { foreignKey: 'storeId' });
     models.bill.belongsTo(models.vendor, { foreignKey: 'storeId', as: 'vendor' });
+    models.bill.belongsTo(models.invoiceFormat, { foreignKey: 'invoiceFormatId', as: 'invoiceFormat' });
   };
   return Bill;
 };

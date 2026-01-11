@@ -2,6 +2,7 @@ const express = require('express');
 // const multer = require('multer');
 // const path = require('path');
 const storeController = require('./store.controller');
+const storeMenuPermissionController = require('./storeMenuPermission.controller');
 const { sanitize } = require('../../../middleware/sanitizer');
 const { jwtStrategy } = require('../../../middleware/strategy');
 const { validateBody, schemas } = require('../../../middleware/validator');
@@ -43,4 +44,22 @@ storeRouter.route('/service/filterByCategory').get(storeController.getServiceAll
 storeRouter.route('/getAllStoresByFilters').get(storeController.getAllStoresByFilters);
 storeRouter.route('/service/getAllStoresByFilters').get(storeController.getServiceAllStoresByFilters);
 storeRouter.route('/getOpenStores').get(storeController.getOpenStores);
+
+// ============================================
+// Store Menu Permissions Routes (Admin Only)
+// ============================================
+// IMPORTANT: These routes MUST come before any /:id routes to avoid route conflicts
+// Route ordering: specific routes first, then parameterized routes
+
+// Get and update single permission
+storeRouter
+  .route('/menu-permissions/:storeId')
+  .get(sanitize(), jwtStrategy, storeMenuPermissionController.getStoreMenuPermissions)
+  .post(sanitize(), jwtStrategy, requireAdmin, storeMenuPermissionController.updateStoreMenuPermission);
+
+// Bulk update permissions
+storeRouter
+  .route('/menu-permissions/:storeId/bulk')
+  .post(sanitize(), jwtStrategy, requireAdmin, storeMenuPermissionController.bulkUpdateStoreMenuPermissions);
+
 module.exports = { storeRouter };

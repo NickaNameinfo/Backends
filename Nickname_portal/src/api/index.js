@@ -17,6 +17,9 @@ const cartRouter = require("./resources/cart").cartRouter;
 const requestStoreRouter =
   require("./resources/requestStores/index").requestStoreRouter;
 const billingRouter = require("./resources/billing").billingRouter;
+const inventoryRouter = require("./resources/inventory").inventoryRouter;
+const subUserRouter = require("./resources/subUser").subUserRouter;
+const invoiceFormatRouter = require("./resources/invoiceFormat").invoiceFormatRouter;
 
 // Import authentication middleware
 const { requireAuth } = require("../middleware/requireAuth");
@@ -45,5 +48,8 @@ restRouter.use("/productFeedback", productFeedbackRouter);
 restRouter.use("/subscription", subscriptionRouter);
 restRouter.use("/ads", adRouter);
 restRouter.use("/address", addressRouter);
+restRouter.use("/inventory", inventoryRouter);
+restRouter.use("/auth/sub-users", subUserRouter);
+restRouter.use("/invoice-formats", invoiceFormatRouter);
 
 module.exports = { restRouter };

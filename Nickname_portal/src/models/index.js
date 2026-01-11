@@ -15,14 +15,31 @@ let sequelize = new Sequelize(
     logging: false,
     underscored: true,
     pool: {
-      max: 20,
-      min: 1,
-      idle: 20000,
-      acquire: 1000000,
+      max: 10, // Reduced from 20 to avoid hitting connection limits (500/hour)
+      min: 0, // Start with 0 connections, create as needed
+      idle: 20000, // Close idle connections after 10 seconds
+      acquire: 30000, // Timeout after 30 seconds if connection can't be acquired
+      evict: 1000, // Check for idle connections every 1 second
+    },
+    retry: {
+      max: 3, // Retry failed connections up to 3 times
+    },
+    // Handle connection errors gracefully
+    dialectOptions: {
+      connectTimeout: 10000, // 10 second connection timeout
     },
     timestamps: true,
   }
 );
+
+// Test database connection on startup
+sequelize.authenticate()
+  .then(() => {
+    console.log('Database connection established successfully.');
+  })
+  .catch((err) => {
+    console.error('Unable to connect to the database:', err.message);
+  });
 
 readdirSync(__dirname)
   .filter((file) => {

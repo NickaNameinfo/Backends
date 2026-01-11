@@ -151,16 +151,47 @@ module.exports = {
 
   async getAllUserList(req, res, next) {
     try {
+      // Extract vendor/store ID from authenticated user
+      const vendorStoreId = req.user?.vendorId || req.user?.storeId;
+      
+      // Build where clause
+      const whereClause = {};
+      
+      // Filter by role if needed (clients typically have role 3)
+      // whereClause.role = 3; // Uncomment if you want to filter by role
+      
+      // Filter by vendor/store ID if user is authenticated
+      if (vendorStoreId) {
+        const vendorIdStr = String(vendorStoreId);
+        whereClause[Op.or] = [
+          { vendorId: vendorIdStr },
+          { storeId: vendorIdStr }
+        ];
+      }
+
       const users = await db.user.findAll({
-        where: {
-          role: 3, // Filter users with role === 3
-        },
+        where: whereClause,
+        attributes: [
+          "id",
+          "firstName",
+          "lastName",
+          "email",
+          "phone",
+          "address",
+          "vendorId",
+          "storeId",
+          "role",
+          "plan",
+          "createdAt",
+          "updatedAt",
+        ],
+        order: [["createdAt", "DESC"]],
       });
 
       if (users && users.length > 0) {
         return res.status(200).json({ success: true, data: users });
       } else {
-        return res.status(404).json({ success: false, message: "No users found with role 3" });
+        return res.status(200).json({ success: true, data: [], message: "No users found" });
       }
     } catch (err) {
       console.error(err);
@@ -233,6 +264,9 @@ module.exports = {
         });
       }
 
+      const isSubUser = req.user.isSubUser || false;
+      const menuPermissions = req.user.menuPermissions || {};
+
       // Generate token
       const currentDate = new Date();
       const token = JWTSign(req.user, currentDate);
@@ -252,13 +286,22 @@ module.exports = {
         sameSite: 'Lax', // CSRF protection - Lax allows top-level navigation
       });
 
+      // Prepare user data for response
+      const userData = req.user.toJSON ? req.user.toJSON() : req.user;
+      if (userData.password) {
+        delete userData.password;
+      }
+
       // Send the response
       return res.status(200).json({
         success: true,
         token,
-        role: req.user.role,
+        role: req.user.role || (isSubUser ? (req.user.vendorId ? '2' : '3') : null),
         id: req.user.id,
-        data: req.user,
+        isSubUser: isSubUser,
+        menuPermissions: isSubUser ? menuPermissions : undefined,
+        status: isSubUser ? req.user.status : 'approved',
+        data: userData,
       });
     } catch (error) {
       // Catch any unexpected error and return a proper response
@@ -303,13 +346,18 @@ module.exports = {
       console.log("req.body keys:", Object.keys(req.body || {}));
       console.log("req.file:", req.file ? "File exists" : "No file");
       
-      // 1. Get the store name from the request body or query parameters
+      // 1. Get the store name from the request body, query parameters, or authenticated user
       // Try multiple variations in case of case sensitivity or different field names
+      // Priority: body > query > user session
       const storeName = req.body?.storeName || 
                        req.body?.storename || 
                        req.body?.store_name ||
                        req.query?.storeName || 
-                       req.query?.storename;
+                       req.query?.storename ||
+                       req.user?.storename ||
+                       req.user?.storeName ||
+                       req.user?.vendorId ||
+                       req.user?.storeId;
 
       // Basic validation for the required dynamic directory/store name
       if (!storeName) {

@@ -53,6 +53,8 @@ exports.localStrategy = (req, res, next) => {
         if (err && err == 'invalid') { return res.status(500).json({ errors: ['Email Id not verified']}); }
         if (err && err == 'attempt') { return res.status(500).json({ errors: ['Too many invalid attempts. Please reset your password.']}); }
         if (err && err.startsWith('attempt:')) { return res.status(500).json({ errors: ['Invalid Credentials (' + err.split(':')[1]+' Attempt(s) Left)']}); }
+        if (err && err == 'pending') { return res.status(403).json({ success: false, errors: ['Your account is pending admin approval. Please wait for approval.'], message: 'Your account is pending admin approval. Please wait for approval.'}); }
+        if (err && err == 'rejected') { return res.status(403).json({ success: false, errors: ['Your account has been rejected. Please contact your administrator.'], message: 'Your account has been rejected. Please contact your administrator.'}); }
         if (err) { return res.status(500).json({ errors: [ err ]}); }
         if (!user) { return res.status(500).json({ errors: ['Invalid Credentials']}); }
         req.user = user;

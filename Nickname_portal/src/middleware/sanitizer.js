@@ -7,8 +7,10 @@ exports.sanitize = function (ignore = []) {
         if (
           ignore.indexOf(data[i]) == -1 &&
           typeof req.body[data[i]] == "string"
-        )
-          req.body[data[i]] = req.sanitize(req.body[data[i]]).trim();
+        ) {
+          const sanitized = req.sanitize ? req.sanitize(req.body[data[i]]) : req.body[data[i]];
+          req.body[data[i]] = (sanitized != null && typeof sanitized === 'string') ? sanitized.trim() : req.body[data[i]];
+        }
       }
     }
     if (req.params) {
@@ -17,8 +19,10 @@ exports.sanitize = function (ignore = []) {
         if (
           ignore.indexOf(data[i]) == -1 &&
           typeof req.params[data[i]] == "string"
-        )
-          req.params[data[i]] = req.sanitize(req.params[data[i]]).trim();
+        ) {
+          const sanitized = req.sanitize ? req.sanitize(req.params[data[i]]) : req.params[data[i]];
+          req.params[data[i]] = (sanitized != null && typeof sanitized === 'string') ? sanitized.trim() : req.params[data[i]];
+        }
       }
     }
     if (req.query) {
@@ -27,8 +31,10 @@ exports.sanitize = function (ignore = []) {
         if (
           ignore.indexOf(data[i]) == -1 &&
           typeof req.query[data[i]] == "string"
-        )
-          req.query[data[i]] = req.sanitize(req.query[data[i]]).trim();
+        ) {
+          const sanitized = req.sanitize ? req.sanitize(req.query[data[i]]) : req.query[data[i]];
+          req.query[data[i]] = (sanitized != null && typeof sanitized === 'string') ? sanitized.trim() : req.query[data[i]];
+        }
       }
     }
     next();
