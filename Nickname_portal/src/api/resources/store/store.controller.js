@@ -217,7 +217,15 @@ module.exports = {
         return { ...store, distance: null }; // Set distance to null if not calculable
       });
 
-      res.status(200).json({ success: true, data: storesWithDistance, count: storesWithDistance.length });
+      // Sort by distance: nearest first, then stores with null distance at the end
+      const sortedStores = storesWithDistance.sort((a, b) => {
+        if (a.distance === null && b.distance === null) return 0;
+        if (a.distance === null) return 1; // Put null distances at the end
+        if (b.distance === null) return -1; // Put null distances at the end
+        return a.distance - b.distance; // Sort by distance ascending (nearest first)
+      });
+
+      res.status(200).json({ success: true, data: sortedStores, count: sortedStores.length });
     } catch (err) {
       console.error(err); // Log the error for debugging
       throw new RequestError("Error");
@@ -291,7 +299,15 @@ module.exports = {
         return { ...store, distance: null }; // Set distance to null if not calculable
       });
 
-      res.status(200).json({ success: true, data: storesWithDistance, count: stores.length });
+      // Sort by distance: nearest first, then stores with null distance at the end
+      const sortedStores = storesWithDistance.sort((a, b) => {
+        if (a.distance === null && b.distance === null) return 0;
+        if (a.distance === null) return 1; // Put null distances at the end
+        if (b.distance === null) return -1; // Put null distances at the end
+        return a.distance - b.distance; // Sort by distance ascending (nearest first)
+      });
+
+      res.status(200).json({ success: true, data: sortedStores, count: sortedStores.length });
     } catch (err) {
       console.log(err, "Error");
       next(new RequestError("Error"));
@@ -361,7 +377,15 @@ module.exports = {
         return { ...store, distance: null }; // Set distance to null if not calculable
       });
 
-      res.status(200).json({ success: true, data: storesWithDistance, count: storesWithDistance.length });
+      // Sort by distance: nearest first, then stores with null distance at the end
+      const sortedStores = storesWithDistance.sort((a, b) => {
+        if (a.distance === null && b.distance === null) return 0;
+        if (a.distance === null) return 1; // Put null distances at the end
+        if (b.distance === null) return -1; // Put null distances at the end
+        return a.distance - b.distance; // Sort by distance ascending (nearest first)
+      });
+
+      res.status(200).json({ success: true, data: sortedStores, count: sortedStores.length });
     } catch (err) {
       console.error(err); // Log the error for debugging
       throw new RequestError("Error");
@@ -835,7 +859,16 @@ module.exports = {
         }
         return { ...store, distance: null }; // Set distance to null if not calculable
       });
-      res.status(200).json({ success: true, data: storesWithDistance, count: stores.length });
+
+      // Sort by distance: nearest first, then stores with null distance at the end
+      const sortedStores = storesWithDistance.sort((a, b) => {
+        if (a.distance === null && b.distance === null) return 0;
+        if (a.distance === null) return 1; // Put null distances at the end
+        if (b.distance === null) return -1; // Put null distances at the end
+        return a.distance - b.distance; // Sort by distance ascending (nearest first)
+      });
+
+      res.status(200).json({ success: true, data: sortedStores, count: sortedStores.length });
     } catch (err) {
       next(new RequestError("Error"));
     }
@@ -919,7 +952,15 @@ module.exports = {
         return { ...store, distance: null }; // Set distance to null if not calculable
       });
 
-      res.status(200).json({ success: true, data: storesWithDistance, count: stores.length });
+      // Sort by distance: nearest first, then stores with null distance at the end
+      const sortedStores = storesWithDistance.sort((a, b) => {
+        if (a.distance === null && b.distance === null) return 0;
+        if (a.distance === null) return 1; // Put null distances at the end
+        if (b.distance === null) return -1; // Put null distances at the end
+        return a.distance - b.distance; // Sort by distance ascending (nearest first)
+      });
+
+      res.status(200).json({ success: true, data: sortedStores, count: sortedStores.length });
     } catch (err) {
       next(new RequestError("Error"));
     }
@@ -1015,7 +1056,15 @@ module.exports = {
         return { ...store, distance: null }; // Set distance to null if not calculable
       });
 
-      res.status(200).json({ success: true, data: storesWithDistance, count: stores.length });
+      // Sort by distance: nearest first, then stores with null distance at the end
+      const sortedStores = storesWithDistance.sort((a, b) => {
+        if (a.distance === null && b.distance === null) return 0;
+        if (a.distance === null) return 1; // Put null distances at the end
+        if (b.distance === null) return -1; // Put null distances at the end
+        return a.distance - b.distance; // Sort by distance ascending (nearest first)
+      });
+
+      res.status(200).json({ success: true, data: sortedStores, count: sortedStores.length });
     } catch (err) {
       console.log(err, "Error");
       next(new RequestError("Error"));
@@ -1114,7 +1163,15 @@ module.exports = {
         return { ...store, distance: null }; // Set distance to null if not calculable
       });
 
-      res.status(200).json({ success: true, data: storesWithDistance, count: stores.length });
+      // Sort by distance: nearest first, then stores with null distance at the end
+      const sortedStores = storesWithDistance.sort((a, b) => {
+        if (a.distance === null && b.distance === null) return 0;
+        if (a.distance === null) return 1; // Put null distances at the end
+        if (b.distance === null) return -1; // Put null distances at the end
+        return a.distance - b.distance; // Sort by distance ascending (nearest first)
+      });
+
+      res.status(200).json({ success: true, data: sortedStores, count: sortedStores.length });
     } catch (err) {
       console.log(err, "Error");
       next(new RequestError("Error"));
@@ -1190,8 +1247,16 @@ module.exports = {
         return { ...store, distance: null }; // Set distance to null if not calculable
       });
 
-      if (openStores.length > 0) {
-        res.status(200).json({ success: true, data: storesWithDistance, count: openStores.length });
+      // Sort by distance: nearest first, then stores with null distance at the end
+      const sortedStores = storesWithDistance.sort((a, b) => {
+        if (a.distance === null && b.distance === null) return 0;
+        if (a.distance === null) return 1; // Put null distances at the end
+        if (b.distance === null) return -1; // Put null distances at the end
+        return a.distance - b.distance; // Sort by distance ascending (nearest first)
+      });
+
+      if (sortedStores.length > 0) {
+        res.status(200).json({ success: true, data: sortedStores, count: sortedStores.length });
       } else {
         res
           .status(404)
