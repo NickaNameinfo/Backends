@@ -191,6 +191,13 @@ module.exports = {
             categoryId: categoryId,
             subCategoryId: subCategoryId,
           },
+          include: [
+            {
+              model: db.productphoto,
+              attributes: ["id", "imgUrl"],
+              required: false,
+            },
+          ],
         })
         .then((product) => {
           res.status(200).json({ success: true, product });
@@ -262,6 +269,11 @@ module.exports = {
               model: db.category,
               as: "category",
               attributes: ["id", "name"],
+              required: false,
+            },
+            {
+              model: db.productphoto,
+              attributes: ["id", "imgUrl"],
               required: false,
             },
           ],
@@ -415,6 +427,13 @@ module.exports = {
             categoryId: req.query.categoryId,
             subCategoryId: req.query.subCategoryId,
           },
+          include: [
+            {
+              model: db.productphoto,
+              attributes: ["id", "imgUrl"],
+              required: false,
+            },
+          ],
         })
         .then((list) => {
           res.status(200).json({ success: true, data: list });
@@ -552,7 +571,14 @@ module.exports = {
               "description",
               "brand",
             ],
-            include: [{ model: db.category, attributes: ["id", "name"] }],
+            include: [
+              { model: db.category, attributes: ["id", "name"] },
+              {
+                model: db.productphoto,
+                attributes: ["id", "imgUrl"],
+                required: false,
+              },
+            ],
           },
         ],
       })
@@ -577,6 +603,13 @@ module.exports = {
           if (data) {
             return db.product.findAll({
               where: { subCategoryId: data.id },
+              include: [
+                {
+                  model: db.productphoto,
+                  attributes: ["id", "imgUrl"],
+                  required: false,
+                },
+              ],
             });
           }
         })
@@ -787,6 +820,13 @@ module.exports = {
             order: [["createdAt", "DESC"]],
             required: true,
             where: productWhere,
+            include: [
+              {
+                model: db.productphoto,
+                attributes: ["id", "imgUrl"],
+                required: false,
+              },
+            ],
           },
         ],
       });
@@ -832,6 +872,124 @@ module.exports = {
   },
 
   // aws image delete
+  /**
+   * Upload Product Photos
+   * Accepts productPhotos as a stringified JSON array of URLs
+   * POST /api/product/upload-photos
+   */
+  async uploadProductPhotos(req, res, next) {
+    try {
+      const { productId, productPhotos } = req.body;
+
+      // Validate required fields
+      if (!productId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Product ID is required'
+        });
+      }
+
+      if (!productPhotos) {
+        return res.status(400).json({
+          success: false,
+          message: 'Product photos are required'
+        });
+      }
+
+      // Check if product exists
+      const product = await db.product.findByPk(productId);
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: 'Product not found'
+        });
+      }
+
+      // Parse productPhotos - handle both string and array
+      let photoUrls = [];
+      if (typeof productPhotos === 'string') {
+        try {
+          photoUrls = JSON.parse(productPhotos);
+        } catch (parseError) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid productPhotos format. Expected JSON array string.'
+          });
+        }
+      } else if (Array.isArray(productPhotos)) {
+        photoUrls = productPhotos;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'productPhotos must be a JSON array string or array'
+        });
+      }
+
+      // Validate that photoUrls is an array
+      if (!Array.isArray(photoUrls)) {
+        return res.status(400).json({
+          success: false,
+          message: 'productPhotos must be an array of URLs'
+        });
+      }
+
+      // Validate that all items in array are strings (URLs)
+      if (photoUrls.some(url => typeof url !== 'string')) {
+        return res.status(400).json({
+          success: false,
+          message: 'All items in productPhotos must be valid URL strings'
+        });
+      }
+
+      // Optional: Delete existing photos for this product
+      // Uncomment the following lines if you want to replace all photos
+      // await db.productphoto.destroy({
+      //   where: { productId: productId }
+      // });
+
+      // Create product photo records
+      const photoRecords = photoUrls.map(url => ({
+        productId: parseInt(productId),
+        imgUrl: url.trim() // Trim whitespace from URLs
+      })).filter(record => record.imgUrl); // Filter out empty URLs
+
+      if (photoRecords.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'No valid photo URLs provided'
+        });
+      }
+
+      // Bulk create product photos
+      const createdPhotos = await db.productphoto.bulkCreate(photoRecords);
+
+      // Fetch all photos for this product (including newly created ones)
+      const allPhotos = await db.productphoto.findAll({
+        where: { productId: productId },
+        attributes: ['id', 'productId', 'imgUrl', 'createdAt', 'updatedAt'],
+        order: [['createdAt', 'DESC']]
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: `Successfully uploaded ${createdPhotos.length} product photo(s)`,
+        data: {
+          productId: productId,
+          photos: allPhotos,
+          newlyAdded: createdPhotos.length
+        }
+      });
+
+    } catch (error) {
+      console.error('Error uploading product photos:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to upload product photos',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
+
   async awsProductPhotoDelete(req, res, next) {
     try {
       const { id, imgUrl } = req.body;
@@ -863,6 +1021,13 @@ module.exports = {
             childCategoryId: childCategoryId,
             subCategoryId: childCategoryId,
           },
+          include: [
+            {
+              model: db.productphoto,
+              attributes: ["id", "imgUrl"],
+              required: false,
+            },
+          ],
         })
         .then((product) => {
           res.status(200).json({ success: true, data: product });
@@ -894,6 +1059,11 @@ module.exports = {
       // Query to find products that are sold in the open stores
       const products = await db.product.findAll({
         include: [
+          {
+            model: db.productphoto,
+            attributes: ["id", "imgUrl"],
+            required: false,
+          },
           {
             model: db.store_product, // Ensure this association exists
             where: {

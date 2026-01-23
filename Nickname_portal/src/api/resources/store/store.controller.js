@@ -457,6 +457,11 @@ module.exports = {
         .findAll({
           include: [
             {
+              model: db.productphoto,
+              attributes: ["id", "imgUrl"],
+              required: false,
+            },
+            {
               model: db.store_product,
               attributes: [
                 "id",
@@ -511,6 +516,13 @@ module.exports = {
                 ...productWhere,
                 status: "1", // Filter products with status equal to 1
               },
+              include: [
+                {
+                  model: db.productphoto,
+                  attributes: ["id", "imgUrl"],
+                  required: false,
+                },
+              ],
             },
           ],
         })
@@ -600,6 +612,13 @@ module.exports = {
               where: {
                 ...productWhere,
               },
+              include: [
+                {
+                  model: db.productphoto,
+                  attributes: ["id", "imgUrl"],
+                  required: false,
+                },
+              ],
             },
           ],
         })

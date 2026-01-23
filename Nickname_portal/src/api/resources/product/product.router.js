@@ -62,7 +62,6 @@ productRouter
 productRouter
   .route("/deleteOfferById/:id")
   .get(jwtStrategy, requireAdmin, productController.productOfferDelete);
-// productRouter.route('/upload-img').post(upload.array('file', 10), productController.multiplePhotoUpload);
 productRouter
   .route("/getAllPhoto")
   .get(productController.getAllPhoto);
@@ -98,5 +97,10 @@ productRouter
 productRouter
   .route("/aws/delete/photo")
   .post(productController.awsProductPhotoDelete);
+
+// Upload product photos from URLs
+productRouter
+  .route("/upload-photos")
+  .post(sanitize(), jwtStrategy, productController.uploadProductPhotos);
 
 module.exports = { productRouter };

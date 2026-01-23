@@ -7,7 +7,7 @@ const { requireAdmin } = require("../../../middleware/requireAuth");
 const billingRouter = express.Router();
 
 billingRouter.route("/add").post(jwtStrategy, billingController.addBill);
-billingRouter.route("/update").post(jwtStrategy, billingController.updateBill);
+billingRouter.route("/update").post(sanitize(), jwtStrategy, billingController.updateBill);
 billingRouter.route("/getAll").get(jwtStrategy, requireAdmin, billingController.getBills);
 billingRouter.route("/getById/:id").get(jwtStrategy, billingController.getBillById);
 billingRouter.route("/getByStoreId/:storeId").get(jwtStrategy, billingController.getBillByStoreId);
