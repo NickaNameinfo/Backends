@@ -25,7 +25,7 @@ authRouter.route('/register').post(
 );
 
 authRouter.route('/user/getAllUserList').get(sanitize(), jwtStrategy, requireAdmin, authController.getAllUserList);
-authRouter.route('/user/update').post(sanitize(), jwtStrategy, authController.userUpdate);
+authRouter.route('/user/update').post(sanitize(), authController.userUpdate);
 authRouter.route('/user/delete').post(sanitize(), jwtStrategy, requireAdmin, authController.deleteUserList);
 authRouter.route('/user/:id').get(sanitize(), jwtStrategy, authController.findUser);
 
