@@ -13,6 +13,7 @@ const { jwtStrategy } = require('./strategy');
 const PUBLIC_ROUTES = [
   // Auth routes
   '/auth/register',
+  '/auth/user/update',
   '/auth/rootLogin',
   '/auth/upload-file',
   
