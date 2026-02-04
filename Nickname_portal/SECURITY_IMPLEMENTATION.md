@@ -83,7 +83,7 @@ app.use(helmet.hsts({
 const { authRateLimiter, strictRateLimiter, apiRateLimiter } = require('./middleware/rateLimiter');
 
 // Apply to specific route
-router.post('/login', authRateLimiter, controller.login);
+router.post('/login', controller.login);
 
 // Apply globally
 app.use('/api', apiRateLimiter);

@@ -19,7 +19,7 @@ customerRouter
 customerRouter
   .route("/login")
   .post(
-    authRateLimiter, // 5 attempts per 15 minutes
+    // authRateLimiter, // 5 attempts per 15 minutes
     sanitize(),
     validateBody(schemas.loginSchema),
     customerStrategy,

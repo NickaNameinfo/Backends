@@ -31,7 +31,7 @@ authRouter.route('/user/:id').get(sanitize(), jwtStrategy, authController.findUs
 
 // Apply auth rate limiting to login (5 attempts per 15 minutes)
 authRouter.route('/rootLogin').post(
-  authRateLimiter,
+  // authRateLimiter,
   sanitize(),
   validateBody(schemas.loginSchema),
   localStrategy, 
