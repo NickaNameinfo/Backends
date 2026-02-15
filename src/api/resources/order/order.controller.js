@@ -1,5 +1,33 @@
 const Sequelize = require("sequelize");
+const http = require("http");
 const db = require("../../../models");
+
+const WS_PORT = process.env.WS_PORT || 3001;
+const WS_HOST = process.env.WS_HOST || "localhost";
+
+function broadcastNewOrder(payload) {
+  const body = JSON.stringify({ event: "new-order", data: payload });
+  console.log("[Order] Broadcasting new-order to WS server", { storeId: payload.storeId, orderId: payload.orderId });
+  const req = http.request(
+    {
+      hostname: WS_HOST,
+      port: WS_PORT,
+      path: "/broadcast",
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
+    },
+    (res) => {
+      if (res.statusCode !== 200) {
+        console.warn("[Order] WebSocket broadcast failed:", res.statusCode);
+      } else {
+        console.log("[Order] WebSocket broadcast sent successfully");
+      }
+    }
+  );
+  req.on("error", (err) => console.warn("[Order] WebSocket broadcast error:", err.message));
+  req.write(body);
+  req.end();
+}
 
 module.exports = {
   async index(req, res, next) {
@@ -57,6 +85,15 @@ module.exports = {
           return res.status(500).json({ errors: ["User is not found"] });
         })
         .then((success) => {
+          const order = success && success.toJSON ? success.toJSON() : success;
+          const storeIdVal = order?.storeId ?? storeId;
+          broadcastNewOrder({
+            storeId: storeIdVal != null ? String(storeIdVal) : undefined,
+            orderId: order?.id,
+            number: order?.number,
+            grandtotal: order?.grandtotal ?? grandTotal,
+            qty: order?.qty ?? qty,
+          });
           res.status(200).json({ success: true, data: success });
         })
         .catch(function (err) {
@@ -170,12 +207,13 @@ module.exports = {
         where: { id: uniqueProductIds },
       });
 
-      const ordersWithProducts = orders.map((order) => ({
-        ...order.toJSON(),
-        products: products.filter((product) =>
-          uniqueProductIds?.includes(product.id)
-        ),
-      }));
+      const ordersWithProducts = orders.map((order) => {
+        const oids = Array.isArray(order.productIds) ? order.productIds : (order.productIds != null ? [order.productIds] : []);
+        return {
+          ...order.toJSON(),
+          products: products.filter((p) => oids.includes(p.id)),
+        };
+      });
 
       res.status(200).json({ success: true, data: ordersWithProducts, count: ordersWithProducts.length   });
     } catch (err) {

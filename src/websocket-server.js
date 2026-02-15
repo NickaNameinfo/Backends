@@ -115,6 +115,25 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Internal broadcast endpoint: API server calls this to emit events (e.g. new-order)
+// Only accept from localhost or same host; in production use a shared secret if needed
+app.use(express.json());
+app.post('/broadcast', (req, res) => {
+  const { event, data } = req.body || {};
+  if (!event || !io) {
+    return res.status(400).json({ success: false, error: 'event required and io must be set' });
+  }
+  try {
+    const clientCount = io.sockets.sockets.size;
+    console.log('[WebSocket] Broadcast', event, { storeId: data?.storeId, connectedClients: clientCount });
+    io.emit(event, data || {});
+    res.json({ success: true, event });
+  } catch (err) {
+    console.error('[WebSocket] Broadcast error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Store connected clients info
 const connectedClients = new Map();
 
