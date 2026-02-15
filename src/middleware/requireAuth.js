@@ -104,6 +104,9 @@ const PUBLIC_ROUTES = [
   // Ad routes
   '/ads',
   '/ads/:id',
+
+  // App version (update check)
+  '/app/version',
 ];
 
 /**

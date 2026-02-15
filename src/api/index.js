@@ -20,6 +20,7 @@ const billingRouter = require("./resources/billing").billingRouter;
 const inventoryRouter = require("./resources/inventory").inventoryRouter;
 const subUserRouter = require("./resources/subUser").subUserRouter;
 const invoiceFormatRouter = require("./resources/invoiceFormat").invoiceFormatRouter;
+const { appRouter } = require("./resources/app/app.router");
 
 // Import authentication middleware
 const { requireAuth } = require("../middleware/requireAuth");
@@ -51,5 +52,6 @@ restRouter.use("/address", addressRouter);
 restRouter.use("/inventory", inventoryRouter);
 restRouter.use("/auth/sub-users", subUserRouter);
 restRouter.use("/invoice-formats", invoiceFormatRouter);
+restRouter.use("/app", appRouter);
 
 module.exports = { restRouter };
