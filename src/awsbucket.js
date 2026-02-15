@@ -15,7 +15,7 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage: multerS3({
     fileFilter,
-    s3: s3,
+    s3: s3, 
     bucket: "krosume",
     metadata: function (req, file, cb) {
       cb(null, { fieldName: "abhi_meta_data" });
@@ -23,7 +23,7 @@ const upload = multer({
     key: function (req, file, cb) {
       cb(null, file.originalname);
     },
-  }),
+  }), 
 });
 
 module.exports = upload;
