@@ -68,3 +68,4 @@ storeRouter
   .post(sanitize(), jwtStrategy, requireAdmin, storeMenuPermissionController.bulkUpdateStoreMenuPermissions);
 
 module.exports = { storeRouter };
+ 
