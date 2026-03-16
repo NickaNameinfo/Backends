@@ -26,7 +26,7 @@ function getStartDateForPeriod(period) {
     case "day":
       start.setDate(start.getDate() - 1);
       break;
-    case "week":
+    case "week": 
       start.setDate(start.getDate() - 7);
       break;
     case "month":

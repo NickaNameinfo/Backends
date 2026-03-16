@@ -47,7 +47,7 @@ storeRouter.route('/service/getAllStoresByFilters').get(storeController.getServi
 storeRouter.route('/getOpenStores').get(storeController.getOpenStores);
 
 // Store visit tracking (POST public for Frontend; GET reports requires auth)
-storeRouter.route('/visit').post(storeVisitController.recordVisit);
+storeRouter.route('/visit').post(storeVisitController.recordVisit); 
 storeRouter.route('/visit/reports').get(sanitize(), jwtStrategy, storeVisitController.getVisitReports);
 
 // ============================================
