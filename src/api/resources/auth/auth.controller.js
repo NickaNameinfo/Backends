@@ -151,22 +151,20 @@ module.exports = {
 
   async getAllUserList(req, res, next) {
     try {
-      // Extract vendor/store ID from authenticated user
-      const vendorStoreId = req.user?.vendorId || req.user?.storeId;
-      
-      // Build where clause
+      // Admin (role 0) should see ALL users including referrals from any vendor/store
+      const isAdmin = req.user?.role === '0' || req.user?.role === 0;
       const whereClause = {};
-      
-      // Filter by role if needed (clients typically have role 3)
-      // whereClause.role = 3; // Uncomment if you want to filter by role
-      
-      // Filter by vendor/store ID if user is authenticated
-      if (vendorStoreId) {
-        const vendorIdStr = String(vendorStoreId);
-        whereClause[Op.or] = [
-          { vendorId: vendorIdStr },
-          { storeId: vendorIdStr }
-        ];
+
+      if (!isAdmin) {
+        // Non-admin (e.g. vendor/store): filter by their vendor/store only
+        const vendorStoreId = req.user?.vendorId || req.user?.storeId;
+        if (vendorStoreId) {
+          const vendorIdStr = String(vendorStoreId);
+          whereClause[Op.or] = [
+            { vendorId: vendorIdStr },
+            { storeId: vendorIdStr }
+          ];
+        }
       }
 
       const users = await db.user.findAll({

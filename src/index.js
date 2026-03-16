@@ -12,7 +12,7 @@ const { securityValidator } = require("./middleware/securityValidator");
 const { startWebSocketServer, stopWebSocketServer } = require("./websocket-server");
 global.appRoot = path.resolve(__dirname);
 const express = require('express');
-const PORT = 5000;
+const PORT = 8000;
 const app = appManager.setup(config);
 
 /*cors handling*/
@@ -46,15 +46,20 @@ app.use((req, res, next) => {
 
 app.use((error, req, res, next) => {
   if (!(error instanceof RequestError)) {
-    error = new RequestError("Some Error Occurred", 500, error.message);
+    const realMessage = error.message || "An error occurred";
+    error = new RequestError("Some Error Occurred", 500, realMessage);
+    error._originalMessage = realMessage;
   }
   error.status = error.status || 500;
   res.status(error.status);
-  
-  // Always return JSON for API endpoints
-  return res.json({ 
+  const isDev = process.env.NODE_ENV !== "production";
+  const errors = error.errorList || [error.message || "An error occurred"];
+  if (error.status === 500 && isDev && error._originalMessage) {
+    errors.push(error._originalMessage);
+  }
+  return res.json({
     success: false,
-    errors: error.errorList || [error.message || "An error occurred"],
+    errors,
     status: error.status
   });
 });

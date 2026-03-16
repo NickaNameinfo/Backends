@@ -46,7 +46,8 @@ const PUBLIC_ROUTES = [
   '/store/getAllStoresByFilters',
   '/store/service/getAllStoresByFilters',
   '/store/getOpenStores',
-  
+  '/store/visit',
+
   // Product routes
   '/product/add',
   '/product/getAllproduct',

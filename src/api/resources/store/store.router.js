@@ -3,6 +3,7 @@ const express = require('express');
 // const path = require('path');
 const storeController = require('./store.controller');
 const storeMenuPermissionController = require('./storeMenuPermission.controller');
+const storeVisitController = require('./storeVisit.controller');
 const { sanitize } = require('../../../middleware/sanitizer');
 const { jwtStrategy } = require('../../../middleware/strategy');
 const { validateBody, schemas } = require('../../../middleware/validator');
@@ -44,6 +45,10 @@ storeRouter.route('/service/filterByCategory').get(storeController.getServiceAll
 storeRouter.route('/getAllStoresByFilters').get(storeController.getAllStoresByFilters);
 storeRouter.route('/service/getAllStoresByFilters').get(storeController.getServiceAllStoresByFilters);
 storeRouter.route('/getOpenStores').get(storeController.getOpenStores);
+
+// Store visit tracking (POST public for Frontend; GET reports requires auth)
+storeRouter.route('/visit').post(storeVisitController.recordVisit);
+storeRouter.route('/visit/reports').get(sanitize(), jwtStrategy, storeVisitController.getVisitReports);
 
 // ============================================
 // Store Menu Permissions Routes (Admin Only)
