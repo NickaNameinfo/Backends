@@ -243,7 +243,7 @@ export const PremiumCard = ({
                     radius="lg"
                     className={`w-full object-contain cursor-pointer ${from !== "ProductView"
                       ? "min-h-[176px] max-h-[176px]"
-                      : "min-h-[50px] max-h-[50px]"
+                      : "min-h-[176px] max-h-[176px]"
                     }`}
                     src={allProductPhotos[selectedImageIndex] || productItem?.photo}
                   />
@@ -269,8 +269,7 @@ export const PremiumCard = ({
                           <Image
                             alt={`Product photo ${idx + 1}`}
                             src={imgUrl}
-                            width={from !== "ProductView" ? 50 : 30}
-                            height={from !== "ProductView" ? 50 : 30}
+                            style={{ width: "25px", height: "25px" }}
                             className="object-cover"
                             radius="sm"
                           />
@@ -280,8 +279,8 @@ export const PremiumCard = ({
                     {allProductPhotos.length > 4 && (
                       <div className="flex-shrink-0 flex items-center justify-center border border-gray-200 rounded bg-gray-100 text-xs text-gray-600 font-medium"
                         style={{
-                          width: from !== "ProductView" ? 50 : 30,
-                          height: from !== "ProductView" ? 50 : 30,
+                          width: "25px",
+                          height: "25px",
                         }}
                       >
                         +{allProductPhotos.length - 4}

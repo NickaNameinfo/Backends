@@ -19,7 +19,10 @@ import {
 } from "@nextui-org/react";
 import { ModalCloseIcon } from "../Icons";
 import { infoData } from "../../configData";
-import { useGetOrderByOrderIdQuery } from "../../views/pages/Store/Service.mjs";
+import {
+  useGetOrderByOrderIdQuery,
+  useLazyShiprocketTrackAwbQuery,
+} from "../../views/pages/Store/Service.mjs";
 import { getCookie } from "../../JsFiles/CommonFunction.mjs";
 import { useAppDispatch, useAppSelector } from "../Common/hooks";
 import {
@@ -32,14 +35,16 @@ const columns = [
   { name: "Product Name", uid: "productName" },
   { name: "Quantity", uid: "qty" },
   { name: "Price", uid: "grandtotal" },
+  { name: "Delivery", uid: "deliveryPartner" },
   { name: "status", uid: "status" },
   { name: "Delivery Date", uid: "deliverydate" },
   { name: "Action", uid: "actions" },
 ];
 
 export const OrderCard = (props: any) => {
-  const userId = getCookie("id");
+  const userId = getCookie("id") || localStorage.getItem("id");
   const dispatch = useAppDispatch();
+  const [trackAwb, { isFetching: isTracking }] = useLazyShiprocketTrackAwbQuery();
   const {
     data: orderList,
     error: orderListError,
@@ -71,21 +76,95 @@ export const OrderCard = (props: any) => {
         return <p>{data?.products?.[0]?.name}</p>;
       case "actions":
         return (
-          <Button
-            variant="bordered"
-            color="warning"
-            onClick={() => {
-              dispatch(
-                onUpdateProductDetailsModal({
-                  isOpen: true,
-                  item: data?.products?.[0],
-                })
-              );
-            }}
-          >
-            view
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="bordered"
+              color="warning"
+              onClick={() => {
+                dispatch(
+                  onUpdateProductDetailsModal({
+                    isOpen: true,
+                    item: data?.products?.[0],
+                  })
+                );
+              }}
+            >
+              view
+            </Button>
+            {String(data?.deliveryPartner || "").toLowerCase() === "shiprocket" && data?.shiprocketAwb && (
+              <Button
+                size="sm"
+                variant="flat"
+                color="secondary"
+                isDisabled={isTracking}
+                onClick={async () => {
+                  try {
+                    const out = await trackAwb(String(data.shiprocketAwb)).unwrap();
+                    const sr = out?.data ?? out;
+                    const track =
+                      sr?.tracking_data?.track_status ||
+                      sr?.tracking_data?.shipment_track?.[0]?.current_status ||
+                      "";
+                    const eta =
+                      sr?.tracking_data?.shipment_track?.[0]?.edd ||
+                      sr?.tracking_data?.shipment_track?.[0]?.etd ||
+                      sr?.tracking_data?.shipment_track?.[0]?.expected_delivery_date ||
+                      sr?.tracking_data?.shipment_track?.[0]?.expected_delivery ||
+                      "";
+                    const url =
+                      sr?.tracking_data?.track_url ||
+                      sr?.tracking_data?.shipment_track?.[0]?.tracking_url ||
+                      data?.shiprocketTrackingUrl ||
+                      "";
+                    alert(
+                      `AWB: ${data.shiprocketAwb}\n${track ? `Status: ${track}\n` : ""}${eta ? `ETA: ${eta}\n` : ""}${url ? `Track: ${url}` : ""}`.trim()
+                    );
+                  } catch {
+                    alert("Tracking not available right now");
+                  }
+                }}
+              >
+                Track
+              </Button>
+            )}
+          </div>
         );
+      case "deliveryPartner": {
+        const partner = String(data?.deliveryPartner || "").toLowerCase();
+        if (partner === "shiprocket") {
+          return (
+            <div>
+              <p className="m-0 p-0 font-semibold text-slate-800">Shiprocket</p>
+              <p className="m-0 p-0 text-xs text-slate-500">
+                {data?.shiprocketAwb ? `AWB: ${data.shiprocketAwb}` : "AWB pending"}
+              </p>
+            </div>
+          );
+        }
+        return (
+          <div>
+            <p className="m-0 p-0 font-semibold text-slate-800">Store</p>
+            <p className="m-0 p-0 text-xs text-slate-500">
+              Delivery update will get from store
+            </p>
+          </div>
+        );
+      }
+      case "deliverydate": {
+        const v = data?.deliverydate || data?.cutomerDeliveryDate || "";
+        const d = v ? new Date(v) : null;
+        const isValid = d && !Number.isNaN(d.getTime());
+        if (isValid) return <p className="m-0 p-0">{d.toLocaleDateString()}</p>;
+        if (String(data?.deliveryPartner || "").toLowerCase() === "shiprocket") {
+          return (
+            <p className="m-0 p-0 text-xs text-slate-500">
+              {data?.shiprocketAwb ? "Use Track for ETA" : "AWB pending"}
+            </p>
+          );
+        }
+        return <p className="m-0 p-0">—</p>;
+      }
       default:
         return <p className="m-0 p-0">{data?.[columnKey]}</p>;
     }

@@ -2,6 +2,8 @@ import { createSlice } from "@reduxjs/toolkit";
 
 export interface GlobalConfigState {
   isOpenRegister?: boolean;
+  /** Keeps Register mounted after CRM submit so the thank-you modal can show */
+  isOpenRegisterSuccessModal?: boolean;
   isOpenLogin?: boolean;
   isOpenForget?: boolean;
   currentloginDetails?: any;
@@ -24,6 +26,7 @@ export interface GlobalConfigState {
 
 const initialState: GlobalConfigState = {
   isOpenRegister: false,
+  isOpenRegisterSuccessModal: false,
   isOpenLogin: false,
   isOpenForget: false,
   currentloginDetails: null,
@@ -52,6 +55,9 @@ const globalConfigSlice = createSlice({
   reducers: {
     onOpenResigter: (state, action) => {
       state.isOpenRegister = action.payload;
+    },
+    onOpenRegisterSuccessModal: (state, action) => {
+      state.isOpenRegisterSuccessModal = action.payload;
     },
     onOpenLogin: (state, action) => {
       state.isOpenLogin = action.payload;
@@ -110,6 +116,7 @@ const globalConfigSlice = createSlice({
 
 export const {
   onOpenResigter,
+  onOpenRegisterSuccessModal,
   onOpenLogin,
   onOpenForget,
   updateLoginDetails,

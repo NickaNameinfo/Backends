@@ -1,11 +1,11 @@
 import React from "react";
 import StoreCard from "../../../Components/Card/StoreCard";
 import {
-  useGetStoresQuery,
-  useGetStoresByCategoryQuery,
-  useGetStoresByFiltersQuery,
-  useGetStoresByPaymentTypeQuery,
   useGetStoresByOpenStoreQuery,
+  useLazyGetStoresQuery,
+  useLazyGetStoresByCategoryQuery,
+  useLazyGetStoresByFiltersQuery,
+  useLazyGetStoresByPaymentTypeQuery,
 } from "./Service.mjs";
 import {
   useAppDispatch,
@@ -20,7 +20,6 @@ import {
 
 const Store = () => {
   const dispatch = useAppDispatch();
-  const { data, error, refetch } = useGetStoresQuery();
   const globalSearch = useAppSelector(
     (state) => state.globalConfig.globalSearch
   );
@@ -34,71 +33,115 @@ const Store = () => {
     (state) => state.globalConfig.onSearchOpenStore
   );
 
-
-  const {
-    data: storesByCategory,
-    error: storeByError,
-    refetch: storeByCategoryRefetch,
-  } = useGetStoresByCategoryQuery(globalCategorySearch, { refetchOnMountOrArgChange: true });
-
-  const {
-    data: storesByFilter,
-    error: storeByFilterError,
-    refetch: storeByFilterRefetch,
-  } = useGetStoresByFiltersQuery(globalSearch, { refetchOnMountOrArgChange: true });
-
-  const {
-    data: storesByPayment,
-    error: storesByPaymentError,
-    refetch: storesByPaymentRefetch,
-  } = useGetStoresByPaymentTypeQuery(gloablSearchByPayment, { refetchOnMountOrArgChange: true });
-
   const {
     data: storesByOpenStore,
     error: storesByOpenStoreError,
     refetch: storesByOpenStoreRefetch,
   } = useGetStoresByOpenStoreQuery({ refetchOnMountOrArgChange: true });
 
-  const [storeDataList, setStoreDataList] = React.useState(null);
+  const [triggerAll] = useLazyGetStoresQuery();
+  const [triggerCategory] = useLazyGetStoresByCategoryQuery();
+  const [triggerSearch] = useLazyGetStoresByFiltersQuery();
+  const [triggerPayment] = useLazyGetStoresByPaymentTypeQuery();
+
+  const [items, setItems] = React.useState<any[]>([]);
+  const [page, setPage] = React.useState(1);
+  const [hasMore, setHasMore] = React.useState(true);
+  const [loadingMore, setLoadingMore] = React.useState(false);
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
     dispatch(onResetModals());
   }, []);
 
   React.useEffect(() => {
-    if (storeDataList) {
-      dispatch(onUpdateStoreList(storeDataList?.data));
-    }
-  }, [storeDataList]);
+    dispatch(onUpdateStoreList(items));
+  }, [items]);
 
-  // React.useEffect(() => {
-  //   storeByCategoryRefetch();
-  //   storeByFilterRefetch();
-  //   storesByPaymentRefetch();
-  //   // storesByOpenStoreRefetch();
-  // }, [globalCategorySearch, globalSearch, gloablSearchByPayment]);
+  const mode = React.useMemo(() => {
+    if (onSearchOpenStore) return "open";
+    if (globalSearch) return "search";
+    if (globalCategorySearch) return "category";
+    if (gloablSearchByPayment) return "payment";
+    return "all";
+  }, [onSearchOpenStore, globalSearch, globalCategorySearch, gloablSearchByPayment]);
+
+  const resetAndLoad = React.useCallback(() => {
+    setItems([]);
+    setPage(1);
+    setHasMore(true);
+  }, []);
+
+  const loadPage = React.useCallback(async (nextPage: number) => {
+    const limit = 20;
+    if (mode === "open") {
+      const list = storesByOpenStore?.data ?? [];
+      setItems(list);
+      setHasMore(false);
+      return;
+    }
+
+    setLoadingMore(true);
+    try {
+      let resp: any;
+      if (mode === "search") {
+        resp = await triggerSearch({ query: globalSearch, page: nextPage, limit }).unwrap();
+      } else if (mode === "category") {
+        resp = await triggerCategory({ id: globalCategorySearch, page: nextPage, limit }).unwrap();
+      } else if (mode === "payment") {
+        resp = await triggerPayment({ query: gloablSearchByPayment, page: nextPage, limit }).unwrap();
+      } else {
+        resp = await triggerAll({ page: nextPage, limit }).unwrap();
+      }
+
+      const batch = resp?.data ?? [];
+      const total = Number(resp?.count ?? 0) || 0;
+      setItems((prev) => (nextPage === 1 ? batch : [...prev, ...batch]));
+      setHasMore(batch.length > 0 && nextPage * limit < total);
+      setPage(nextPage);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [mode, triggerAll, triggerCategory, triggerSearch, triggerPayment, globalSearch, globalCategorySearch, gloablSearchByPayment, storesByOpenStore]);
 
   React.useEffect(() => {
-    if (storesByFilter?.data?.length > 0) {
-      setStoreDataList(storesByFilter);
-    } else if (storesByCategory?.data?.length > 0) {
-      setStoreDataList(storesByCategory);
-    } else if (storesByPayment?.data?.length > 0) {
-      setStoreDataList(storesByPayment);
-    } else if (storesByOpenStore?.data?.length > 0 && onSearchOpenStore) {
-      setStoreDataList(storesByOpenStore);
-    } else if (data?.data?.length > 0) {
-      setStoreDataList(data);
-    }
-  }, [storesByCategory, data, storesByFilter, storesByPayment]);
+    resetAndLoad();
+  }, [resetAndLoad, mode]);
+
+  React.useEffect(() => {
+    loadPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  React.useEffect(() => {
+    if (!sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first?.isIntersecting && hasMore && !loadingMore) {
+          loadPage(page + 1);
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasMore, loadingMore, loadPage, page]);
 
   return (
     <>
       <div className="grid mm:grid-cols-2 ml:grid-cols-2 sm:grid-cols-4  md:grid-cols-4  lg:grid-cols-4  xl:grid-cols-4 2xl:grid-cols-4 3xl:grid-cols-4 gap-2 mt-2">
-        {storeDataList?.data?.map((item, index) => {
+        {items?.map((item, index) => {
           return item?.status === 1 && <StoreCard item={item} key={index} />;
         })}
       </div>
+      <div ref={sentinelRef} className="h-10 w-full" />
+      {loadingMore ? (
+        <div className="w-full flex items-center justify-center py-4 text-sm text-gray-600">
+          Loading more...
+        </div>
+      ) : null}
     </>
   );
 };

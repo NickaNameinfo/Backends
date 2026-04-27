@@ -14,9 +14,10 @@ export const ProductApi = createApi({
   baseQuery: axiosBaseQuery,
   endpoints: (builder) => ({
     getProducts: builder.query({
-      query: (body) => ({
+      query: ({ page = 1, limit = 20 } = {}) => ({
         url: `/product/getAllproductList`,
         method: "GET",
+        params: { page, limit },
       }),
     }),
     getProductImg: builder.query({
@@ -27,27 +28,29 @@ export const ProductApi = createApi({
     }),
     getProductsById: builder.query({
       query: (id) => ({
-        url: `/product/getProductById`,
+        url: `/product/getWebProductById/${id}`,
         method: "GET",
-        params: { id },
       }),
     }),
     getProductsByCategory: builder.query({
-      query: (id) => ({
-        url: `/product/getAllByCategory?categoryIds=${id}`,
+      query: ({ id, page = 1, limit = 20 } = {}) => ({
+        url: `/product/getAllByCategory`,
         method: "GET",
+        params: { categoryIds: id, page, limit },
       }),
     }),
     getProductsBySearch: builder.query({
-      query: (query) => ({
-        url: `/product/gcatalogsearch/result?search=${query}`,
+      query: ({ query, page = 1, limit = 20 } = {}) => ({
+        url: `/product/gcatalogsearch/result`,
         method: "GET",
+        params: { search: query, flat: 1, page, limit },
       }),
     }),
     getProductsByPaymenType: builder.query({
-      query: (query) => ({
-        url: `/product/gcatalogsearch/result?paymentModes=${query}`,
+      query: ({ query, page = 1, limit = 20 } = {}) => ({
+        url: `/product/gcatalogsearch/result`,
         method: "GET",
+        params: { paymentModes: query, flat: 1, page, limit },
       }),
     }),
     getProductsByOpenShop: builder.query({
@@ -69,3 +72,11 @@ export const {
   useGetProductsByOpenShopQuery
 } = ProductApi;
 export const { endpoints } = ProductApi;
+
+export const {
+  useLazyGetProductsQuery,
+  useLazyGetProductsByIdQuery,
+  useLazyGetProductsByCategoryQuery,
+  useLazyGetProductsBySearchQuery,
+  useLazyGetProductsByPaymenTypeQuery,
+} = ProductApi;

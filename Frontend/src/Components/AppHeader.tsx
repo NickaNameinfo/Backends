@@ -90,7 +90,7 @@ export const AppHeader = () => {
   const [searchValues, setSearchValues] = React.useState(null);
   const [isPopOverOpen, setIsPopOverOpen] = React.useState(false);
   const dispatch = useAppDispatch();
-  const id = getCookie("id");
+  const id = getCookie("id") || localStorage.getItem("id");
   const itemsPerPage = 12;
   const displayedLabels =
     sliderLabel?.slice(startIndex, startIndex + itemsPerPage) || [];
@@ -198,57 +198,82 @@ export const AppHeader = () => {
               <IconHome height="16px" width="16px" />
             </Button>
           </Link>
-          <Input
-            className="w-full md:w-[280px] md:mt-0"
-            radius="lg"
-            size="md"
-            isClearable
-            placeholder="Search Here..."
-            onChange={(e) => setSearchValues(e.target.value)}
-            onClear={() => {
-              dispatch(onSearchGlobal(null));
-              setSearchValues(null);
-            }}
-            classNames={{
-              label: "bg-[#ffffff3b] text-black/90 dark:text-black/90",
-              input: [
-                "bg-[#ffffff3b]",
-                "text-black/90 dark:text-black/100",
-                "placeholder:text-black-100/30 dark:placeholder:text-black/10",
-                "font-normal",
-                "group-data-[has-value=true]:text-black/90",
-              ],
-              innerWrapper: "text-black/90 dark:text-black/70",
-              inputWrapper: [
-                "bg-[#ffffff3b]",
-                "dark:bg-[#ffffff3b]",
-                "backdrop-blur-xl",
-                "backdrop-saturate-50",
-                "hover:bg-[#ffffff3b]",
-                "hover:border-gray-600/10",
-                "focus-within:!bg-[#ffffff3b]",
-                "dark:hover:bg-[#ffffff3b]",
-                "dark:focus-within:!bg-[#ffffff3b]",
-                "!cursor-text",
-                "shadow-none",
-                "border-0",
-                "data-[hover=true]:bg-[#ffffff3b]",
-                "data-[hover=true]:bg-[#ffffff3b]",
-                "dark:data-[hover=true]:bg-[#ffffff3b]",
-              ],
-            }}
-            startContent={
-              <p className="me-1.5">
-                <NavHeaderSearchIcon />
-              </p>
-            }
-          />
-          <Button
-            className="ml-2 md:flex bg-[#ffffff3b] items-center"
-            onClick={() => onSearch()}
-          >
-            <SearchIcon color="blue" />
-          </Button>
+          <div className="flex flex-1 flex-wrap items-center gap-1 min-w-0 md:flex-nowrap md:gap-2">
+            <Input
+              className="w-full min-w-0 md:w-[248px] md:mt-0"
+              radius="lg"
+              size="md"
+              isClearable
+              placeholder="Search products..."
+              aria-label="Search products"
+              onChange={(e) => setSearchValues(e.target.value)}
+              onClear={() => {
+                dispatch(onSearchGlobal(null));
+                setSearchValues(null);
+              }}
+              classNames={{
+                label: "bg-[#ffffff3b] text-black/90 dark:text-black/90",
+                input: [
+                  "bg-[#ffffff3b]",
+                  "text-black/90 dark:text-black/100",
+                  "placeholder:text-black-100/30 dark:placeholder:text-black/10",
+                  "font-normal",
+                  "group-data-[has-value=true]:text-black/90",
+                ],
+                innerWrapper: "text-black/90 dark:text-black/70",
+                inputWrapper: [
+                  "bg-[#ffffff3b]",
+                  "dark:bg-[#ffffff3b]",
+                  "backdrop-blur-xl",
+                  "backdrop-saturate-50",
+                  "hover:bg-[#ffffff3b]",
+                  "hover:border-gray-600/10",
+                  "focus-within:!bg-[#ffffff3b]",
+                  "dark:hover:bg-[#ffffff3b]",
+                  "dark:focus-within:!bg-[#ffffff3b]",
+                  "!cursor-text",
+                  "shadow-none",
+                  "border-0",
+                  "data-[hover=true]:bg-[#ffffff3b]",
+                  "data-[hover=true]:bg-[#ffffff3b]",
+                  "dark:data-[hover=true]:bg-[#ffffff3b]",
+                ],
+              }}
+              startContent={
+                <p className="me-1.5">
+                  <NavHeaderSearchIcon />
+                </p>
+              }
+            />
+            <Tooltip
+              content="This bar searches the product catalog only. Enter a product name or keyword, then tap the search button."
+              showArrow
+              delay={200}
+              classNames={{
+                content: "max-w-[260px] text-small",
+              }}
+            >
+              <span className="inline-flex shrink-0">
+                <Button
+                  isIconOnly
+                  variant="flat"
+                  radius="lg"
+                  size="md"
+                  className="bg-[#ffffff3b] text-foreground/80 border-0 min-w-10"
+                  aria-label="About product search"
+                >
+                  <IconInfo width={18} height={18} />
+                </Button>
+              </span>
+            </Tooltip>
+            <Button
+              className="shrink-0 md:flex bg-[#ffffff3b] items-center"
+              onClick={() => onSearch()}
+              aria-label="Run product search"
+            >
+              <SearchIcon color="blue" />
+            </Button>
+          </div>
         </div>
 
         {/* Right Section */}

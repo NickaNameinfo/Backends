@@ -43,24 +43,26 @@ img {
 }
 
 body {
-  background: linear-gradient(
-    108deg,
-    #e3deff -0.31%,
-    rgba(123, 108, 217, 0.39) 52.11%,
-    rgba(56, 23, 254, 0.25) 103.45%
-  );
+  background: var(--gradient-primary);
   height: 100vh;
 }
 :root {
-  --primary-900: #d1e1ff;
+  /* Brand palette */
+  --brand-accent: #f6bc00;
+  --brand-success: #49a84c;
+  --brand-primary: #4c86f9;
+
+  /* Back-compat tokens used across the app */
+  --primary-900: var(--brand-primary);
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
   --gradient-primary: linear-gradient(
-    108deg,
-    #e3deff -0.31%,
-    rgba(123, 108, 217, 0.39) 52.11%,
-    rgba(56, 23, 254, 0.25) 103.45%
+    120deg,
+    rgba(246, 188, 0, 0.22) 0%,
+    rgba(73, 168, 76, 0.18) 38%,
+    rgba(76, 134, 249, 0.20) 78%,
+    rgba(246, 188, 0, 0.12) 100%
   );
   --gradient-secondary: linear-gradient(
     111deg,
@@ -74,21 +76,21 @@ body {
   --sidebarColor-cardBG: #e7ffe980;
   --sidebarColor-checkBoxBG: #b3ecb8;
   --sidebarColor-uncheckBoxBG: #bbdbfb;
-  --sidebarColor-checkColor: #49a84c;
+  --sidebarColor-checkColor: var(--brand-success);
   --sidebarColor-sideBarBG: rgba(237, 234, 253, 0.5);
-  --greenIcon: #49a84cb8;
-  --searchIcon: #8465f7;
-  --whatsApp: #49a84c;
+  --greenIcon: rgba(73, 168, 76, 0.72);
+  --searchIcon: var(--brand-primary);
+  --whatsApp: var(--brand-success);
   --call: #2a9ef1;
   --location: #8007f9;
   --web: #fb3d13;
   --share: #0fcec3;
-  --button-main: #4c86f9;
-  --button-secondary: #4c86f9;
-  --button-secondaryBG: #4c86f9;
-  --button-infoButton: #4c86f9;
-  --button-backgroundInfo: #4c86f9;
-  --button-backgroundMain: #4c86f9;
+  --button-main: var(--brand-primary);
+  --button-secondary: var(--brand-primary);
+  --button-secondaryBG: var(--brand-primary);
+  --button-infoButton: var(--brand-primary);
+  --button-backgroundInfo: var(--brand-primary);
+  --button-backgroundMain: var(--brand-primary);
   --textColor-main: #000000;
   --textColor-secondary: #3b3939;
   --textColor-timingColor: #5b5555;
@@ -104,9 +106,9 @@ body {
   --cardIconColor-disableIcon: #636060;
   --card-boxShadow: 0px 3px 6px 0px rgba(0, 0, 0, 0.1);
   --card-whistleIcon: #ff0000;
-  --card-eyeIcon: #cfa007;
-  --card-addToCartIcon: #4c86f9;
-  --card-addToCartIcon: #4c86f9;
+  --card-eyeIcon: var(--brand-accent);
+  --card-addToCartIcon: var(--brand-primary);
+  --card-addToCartIcon: var(--brand-primary);
   --borderRadius-2: 2px;
   --borderRadius-4: 4px;
   --borderRadius-5: 5px;
@@ -116,7 +118,7 @@ body {
   --borderRadius-25: 25px;
   --borderRadius-28: 28px;
   --borderRadius-50: 50px;
-  --favourite: #ff9900;
+  --favourite: var(--brand-accent);
   --cart-mainBG: #efefef;
   --cart-secondaryBG: #e6e6e6;
   --backdrop-filter: blur(2px);

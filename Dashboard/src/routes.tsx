@@ -23,6 +23,8 @@ const CustomersList = React.lazy(() => import("../src/views/Customers"));
 const CustomersOrderList = React.lazy(() => import("../src/views/Customers/CustomersOrderList"));
 const CustomizeOrderList = React.lazy(() => import("../src/views/Customers/CustomizeOrderList"));
 const StoresList = React.lazy(() => import("../src/views/Store/StoreList"));
+const StoreTrashList = React.lazy(() => import("../src/views/Store/StoreTrashList"));
+const StoreSubscriptions = React.lazy(() => import("../src/views/Store/StoreSubscriptions"));
 const VendorProducts = React.lazy(
   () => import("../src/views/VendorProducts/index")
 );
@@ -46,6 +48,7 @@ const ClientProductsList = React.lazy(() => import("../src/views/Inventory/Clien
 const InventorySummary = React.lazy(() => import("../src/views/Inventory/Summary"));
 const Settings = React.lazy(() => import("../src/views/Settings"));
 const Reports = React.lazy(() => import("../src/views/Reports"));
+const StoreReports = React.lazy(() => import("../src/views/Store/StoreReports"));
 const InvoiceFormats = React.lazy(() => import("../src/views/InvoiceFormats"));
 
 const routes = [
@@ -69,6 +72,9 @@ const routes = [
   { path: "/Stores/Add", name: "AddStores", element: AddStores },
   { path: "/Stores/Edit/:itemId", name: "EditStores", element: EditStores },
   { path: "/Stores/List", name: "StoresList", element: StoresList },
+  { path: "/Stores/Trash", name: "StoresTrash", element: StoreTrashList },
+  { path: "/Stores/Subscriptions", name: "StoreSubscriptions", element: StoreSubscriptions },
+  { path: "/Dashboard/Stores/Subscriptions", name: "StoreSubscriptions", element: StoreSubscriptions },
   {
     path: "/Vendors/Products",
     name: "VendorProductList",
@@ -95,6 +101,9 @@ const routes = [
   { path: "/Inventory/Summary", name: "Inventory Summary", element: InventorySummary },
   { path: "/Settings", name: "Settings", element: Settings },
   { path: "/Reports", name: "Reports", element: Reports },
+  // Keep both paths to support deployments that mount under `/Dashboard/*`
+  { path: "/StoreReports", name: "Store Reports", element: StoreReports },
+  { path: "/Dashboard/StoreReports", name: "Store Reports", element: StoreReports },
   { path: "/InvoiceFormats", name: "Invoice Formats", element: InvoiceFormats },
 ];
 

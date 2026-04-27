@@ -40,9 +40,12 @@ import {
   useAddAddressMutation,
   useAddPyamentMutation,
   useAddOrderlistMutation,
-  useUpdateProductMutation
+  useUpdateProductMutation,
+  useGetStoresByIdQuery,
+  useGetStoresByIdsMutation,
+  useLazyShiprocketServiceabilityQuery
 } from "../../views/pages/Store/Service.mjs";
-import { useGetProductsByIdQuery } from "../../views/pages/Product/Service.mjs";
+import { useLazyGetProductsByIdQuery } from "../../views/pages/Product/Service.mjs";
 import { getAuthHeaders } from "../../utils/authHelper.mjs";
 import { getCookie } from "../../JsFiles/CommonFunction.mjs";
 import { infoData } from "../../configData";
@@ -51,6 +54,7 @@ import Swal from "sweetalert2";
 const columns = [
   { name: "Sl.No", uid: "id" },
   { name: "Product", uid: "photo" },
+  { name: "Store", uid: "store" },
   { name: "Quantity", uid: "actions" },
   { name: "Price", uid: "price" },
   { name: "Size", uid: "size" },
@@ -65,7 +69,7 @@ export const BuyCard = (props: any) => {
   const isOpenCartModal = useAppSelector(
     (state) => state.globalConfig.isOpenCartModal
   );
-  const userId = getCookie("id");
+  const userId = getCookie("id") || localStorage.getItem("id");
   const { id } = useParams();
   const {
     data: cart,
@@ -95,6 +99,7 @@ export const BuyCard = (props: any) => {
     states: "",
     area: "",
     shipping: "",
+    pincode: "",
     id: "",
   });
 
@@ -106,7 +111,113 @@ export const BuyCard = (props: any) => {
     states: "",
     area: "",
     shipping: "",
+    pincode: "",
   });
+
+  const [estimatedDeliveryText, setEstimatedDeliveryText] = React.useState<string>("");
+  const [estimatedByStore, setEstimatedByStore] = React.useState<Record<string, string>>({});
+  const [fetchServiceability, { isFetching: isFetchingServiceability }] =
+    useLazyShiprocketServiceabilityQuery();
+  const [fetchStoresByIds] = useGetStoresByIdsMutation();
+  const [fetchProductById] = useLazyGetProductsByIdQuery();
+
+  const storeIds = React.useMemo<number[]>(() => {
+    const ids: number[] = (cart?.data || [])
+      .map((c: any) => Number(c.storeId ?? c.store_id))
+      .filter((n: number) => Number.isFinite(n) && n > 0);
+    return [...new Set<number>(ids)];
+  }, [cart?.data]);
+
+  const [storesById, setStoresById] = React.useState<Record<string, any>>({});
+
+  React.useEffect(() => {
+    const run = async () => {
+      if (!storeIds.length) {
+        setStoresById({});
+        return;
+      }
+      try {
+        const out = await fetchStoresByIds({ ids: storeIds }).unwrap();
+        const rows = out?.data || [];
+        const map: Record<string, any> = {};
+        for (const r of rows) map[String(r.id)] = r;
+        setStoresById(map);
+      } catch {
+        setStoresById({});
+      }
+    };
+    run();
+  }, [fetchStoresByIds, storeIds]);
+
+  const shiprocketStoreIds = React.useMemo<number[]>(() => {
+    if (!storeIds.length) return [];
+    return storeIds.filter((sid) => {
+      const partner = String(storesById[String(sid)]?.deliveryPartner || "").toLowerCase();
+      return partner === "shiprocket";
+    });
+  }, [storeIds, storesById]);
+
+  const localStoreIds = React.useMemo<number[]>(() => {
+    if (!storeIds.length) return [];
+    return storeIds.filter((sid) => {
+      const row = storesById[String(sid)];
+      if (!row) return false; // wait until store list loads
+      const partner = String(row?.deliveryPartner || "").toLowerCase();
+      return partner !== "shiprocket";
+    });
+  }, [storeIds, storesById]);
+
+  const cartStoreId = React.useMemo(() => {
+    const first = cart?.data?.[0];
+    return first?.storeId ?? first?.store_id ?? null;
+  }, [cart?.data]);
+
+  const pickupStoreId = React.useMemo(() => {
+    // Prefer store from cart item; fallback to route param (selected store page)
+    const fromCart = cartStoreId != null ? Number(cartStoreId) : NaN;
+    if (Number.isFinite(fromCart) && fromCart > 0) return fromCart;
+    const fromRoute = id != null ? Number(id) : NaN;
+    if (Number.isFinite(fromRoute) && fromRoute > 0) return fromRoute;
+    return null;
+  }, [cartStoreId, id]);
+
+  const { data: pickupStore } = useGetStoresByIdQuery(pickupStoreId, { skip: !pickupStoreId });
+
+  const extractPincode = (text: any) => {
+    const m = String(text ?? "").match(/\b(\d{6})\b/);
+    return m ? m[1] : "";
+  };
+
+  const pickupPincode = React.useMemo(() => {
+    const s = pickupStore?.data;
+    // Prefer pincode present in the shop/store address text (Shiprocket pickup pincode).
+    const fromAddress = extractPincode(
+      s?.storeaddress ||
+        s?.shopaddress ||
+        s?.owneraddress ||
+        s?.location
+    );
+    if (fromAddress) return fromAddress;
+
+    // Fallback: area zipcode (may represent a broader region, not the exact pickup pincode)
+    const z = s?.areaZipcode ?? s?.zipcode ?? s?.area?.zipcode;
+    if (z != null && String(z).trim() !== "") return String(z).trim();
+    return "";
+  }, [pickupStore]);
+
+  const getPickupPincodeForStore = React.useCallback(
+    (storeId: number | string) => {
+      const s = storesById[String(storeId)];
+      if (!s) return "";
+      const fromAddress = extractPincode(
+        s?.storeaddress || s?.shopaddress || s?.owneraddress || s?.location
+      );
+      if (fromAddress) return fromAddress;
+      const z = s?.areaZipcode ?? s?.zipcode ?? s?.area?.zipcode;
+      return z != null && String(z).trim() !== "" ? String(z).trim() : "";
+    },
+    [storesById]
+  );
 
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [scriptLoaded, setScriptLoaded] = React.useState(false);
@@ -159,11 +270,12 @@ export const BuyCard = (props: any) => {
         phone: selectedAddress.phone || "",
         orderId: selectedAddress.orderId || "",
         custId: selectedAddress.custId || "",
-        district: selectedAddress.district || "",
+        district: selectedAddress.district || selectedAddress.discrict || "",
         city: selectedAddress.city || "",
         states: selectedAddress.states || "",
         area: selectedAddress.area || "",
         shipping: selectedAddress.shipping || "",
+        pincode: selectedAddress.pincode || "",
         id: selectedAddress.id || "",
       });
     }
@@ -362,7 +474,7 @@ export const BuyCard = (props: any) => {
     }
   };
 
-  const razorpayHandleSubmit = async (amountInRupees, apiParams, paymentResult) => {
+  const razorpayHandleSubmit = async (_amountInRupees, apiParams, paymentResult) => {
     try {
       const options = {
         key: infoData.razorpayKey,
@@ -400,8 +512,11 @@ export const BuyCard = (props: any) => {
       if (isOpenCartModal?.type === "Product") {
         // 2. Iterate through the cart and create separate orders for each item
         const orderPromises = cart.data.map(async (item) => {
+          const itemStoreId =
+            item?.storeId ?? item?.store_id ?? apiParams?.storeId ?? id;
           const itemApiParams = {
             ...apiParams, // Copy base parameters (including payment method)
+            storeId: itemStoreId,
             grandTotal: Number(item?.qty * item?.price), // Individual item total
             productIds: item?.productId, // Individual item ID
             qty: item?.qty, // Individual item quantity
@@ -474,20 +589,55 @@ export const BuyCard = (props: any) => {
 
     // Validation: Check stock availability for all cart items
     if (isOpenCartModal.type === "Product") {
+      const productCache = new Map<string, any>();
       for (const item of cart.data) {
+        const parseSizeMap = (raw: any) => {
+          if (!raw) return null;
+          try {
+            return typeof raw === "string" ? JSON.parse(raw) : raw;
+          } catch {
+            return null;
+          }
+        };
+
+        const itemSize = String(item?.size || "").trim();
         let availableStock = Number(item?.unitSize) || 0;
         
         // Check size-specific stock if applicable
         if (item?.size && item?.sizeUnitSizeMap) {
           try {
-            const sizeMap = typeof item.sizeUnitSizeMap === 'string' 
-              ? JSON.parse(item.sizeUnitSizeMap) 
-              : item.sizeUnitSizeMap;
+            const sizeMap = parseSizeMap(item.sizeUnitSizeMap);
             if (sizeMap[item.size]) {
               availableStock = Number(sizeMap[item.size].unitSize) || 0;
             }
           } catch (e) {
             console.warn('Failed to parse sizeUnitSizeMap for stock check:', e);
+          }
+        }
+
+        // If cart item doesn't have reliable stock, fetch latest product from API
+        if (availableStock <= 0 || !Number.isFinite(availableStock)) {
+          const pid = item?.productId ?? item?.productid ?? item?.id;
+          if (pid != null) {
+            const key = String(pid);
+            let prod = productCache.get(key);
+            if (!prod) {
+              try {
+                const out: any = await fetchProductById(pid).unwrap();
+                prod = out?.data ?? out?.product ?? out;
+                productCache.set(key, prod);
+              } catch {
+                prod = null;
+              }
+            }
+            if (prod) {
+              const prodSizeMap = parseSizeMap(prod?.sizeUnitSizeMap);
+              if (itemSize && prodSizeMap && prodSizeMap[itemSize]) {
+                availableStock = Number(prodSizeMap[itemSize]?.unitSize) || 0;
+              } else {
+                availableStock = Number(prod?.unitSize ?? prod?.qty) || 0;
+              }
+            }
           }
         }
 
@@ -570,8 +720,11 @@ export const BuyCard = (props: any) => {
       else {
         // If it's a non-online payment method (e.g., COD), execute orders directly
         const orderPromises = cart.data.map(async (item) => {
+          const itemStoreId =
+            item?.storeId ?? item?.store_id ?? baseApiParams?.storeId ?? id;
           const itemApiParams = {
             ...baseApiParams, // Copy base parameters
+            storeId: itemStoreId,
             grandTotal: Number(item?.qty * item?.price), // Individual item total
             productIds: item?.productId, // Individual item ID
             qty: item?.qty, // Individual item quantity
@@ -724,6 +877,10 @@ export const BuyCard = (props: any) => {
           return "Shipping address must be at least 5 characters";
         }
         return "";
+      case "pincode":
+        if (!value.trim()) return "Pincode is required";
+        if (!/^[0-9]{6}$/.test(value.trim())) return "Pincode must be 6 digits";
+        return "";
       default:
         return "";
     }
@@ -731,6 +888,17 @@ export const BuyCard = (props: any) => {
 
   const handleAddressChange = (e) => {
     const { name, value } = e.target;
+    // If pincode becomes valid while typing, auto-fetch delivery estimate
+    if (name === "pincode") {
+      const pin = String(value ?? "").trim();
+      if (/^[0-9]{6}$/.test(pin)) {
+        updateEstimatedDelivery(pin);
+        updateEstimatedDeliveryForStores(pin);
+      } else {
+        setEstimatedDeliveryText("");
+        setEstimatedByStore({});
+      }
+    }
     setAddressDetails({
       ...addressDetails,
       [name]: value,
@@ -753,10 +921,182 @@ export const BuyCard = (props: any) => {
       states: validateAddressField("states", addressDetails.states),
       area: validateAddressField("area", addressDetails.area),
       shipping: validateAddressField("shipping", addressDetails.shipping),
+      pincode: validateAddressField("pincode", addressDetails.pincode),
     };
     setAddressErrors(errors);
     return !Object.values(errors).some((error) => error !== "");
   };
+
+  const updateEstimatedDelivery = async (pin: string) => {
+    const delivery = String(pin ?? "").trim();
+    if (!/^[0-9]{6}$/.test(delivery)) {
+      setEstimatedDeliveryText("");
+      return;
+    }
+    if (pickupStoreId && !pickupStore?.data) {
+      setEstimatedDeliveryText("Checking store...");
+      return;
+    }
+    const pickupPartner = String(pickupStore?.data?.deliveryPartner || "").toLowerCase();
+    if (pickupPartner !== "shiprocket") {
+      setEstimatedDeliveryText("Local delivery (Shiprocket not enabled for this store)");
+      return;
+    }
+    if (!pickupPincode) {
+      setEstimatedDeliveryText("Pickup pincode missing in store address");
+      return;
+    }
+    try {
+      const out = await fetchServiceability({
+        pickup_postcode: pickupPincode,
+        delivery_postcode: delivery,
+        cod: selectedPaymentMethod === "3" ? 1 : 0,
+        weight: 0.5,
+      }).unwrap();
+      const sr = out?.data ?? out; // backend wraps in {success:true,data:<shiprocket>}
+      const list =
+        sr?.data?.available_courier_companies ||
+        sr?.available_courier_companies ||
+        [];
+
+      if (!Array.isArray(list) || list.length === 0) {
+        setEstimatedDeliveryText("Delivery estimate not available");
+        return;
+      }
+
+      // Prefer minimum estimated_delivery_days if present
+      const withDays = list
+        .map((c: any) => ({
+          company: c?.courier_name || c?.courier_company_name || c?.name,
+          days: Number(c?.estimated_delivery_days),
+          etd: c?.etd,
+        }))
+        .filter((x: any) => Number.isFinite(x.days) && x.days >= 0);
+
+      if (withDays.length) {
+        const min = withDays.reduce((a: any, b: any) => (b.days < a.days ? b : a), withDays[0]);
+        const d = new Date();
+        d.setDate(d.getDate() + min.days);
+        setEstimatedDeliveryText(
+          `Estimated delivery: ${d.toLocaleDateString()} (${min.days} day(s))${min.company ? ` • ${min.company}` : ""}`
+        );
+        return;
+      }
+
+      // Fallback: Shiprocket sometimes returns `etd` as a date string
+      const etd = list.map((c: any) => c?.etd).find(Boolean);
+      if (etd) {
+        setEstimatedDeliveryText(`Estimated delivery: ${String(etd)}`);
+        return;
+      }
+
+      setEstimatedDeliveryText("Delivery estimate not available");
+    } catch {
+      setEstimatedDeliveryText("Delivery estimate not available");
+    }
+  };
+
+  const updateEstimatedDeliveryForStores = React.useCallback(
+    async (deliveryPin: string) => {
+      const delivery = String(deliveryPin ?? "").trim();
+      if (!/^[0-9]{6}$/.test(delivery)) {
+        setEstimatedByStore({});
+        return;
+      }
+      if (!storeIds.length) {
+        setEstimatedByStore({});
+        return;
+      }
+
+      const entries = storeIds.map((sid) => ({ sid, pickup: getPickupPincodeForStore(sid) }));
+      const next: Record<string, string> = {};
+
+      await Promise.all(
+        entries.map(async ({ sid, pickup }) => {
+          const storeRow = storesById[String(sid)];
+          if (!storeRow) {
+            next[String(sid)] = "Checking store...";
+            return;
+          }
+          const partner = String(storeRow?.deliveryPartner || "").toLowerCase();
+          if (partner !== "shiprocket") {
+            next[String(sid)] = "Local delivery";
+            return;
+          }
+          if (!pickup) {
+            next[String(sid)] = "Pickup pincode missing in shop address";
+            return;
+          }
+          try {
+            const out = await fetchServiceability({
+              pickup_postcode: pickup,
+              delivery_postcode: delivery,
+              cod: selectedPaymentMethod === "3" ? 1 : 0,
+              weight: 0.5,
+            }).unwrap();
+            const sr = out?.data ?? out;
+            const list =
+              sr?.data?.available_courier_companies ||
+              sr?.available_courier_companies ||
+              [];
+            const withDays = (Array.isArray(list) ? list : [])
+              .map((c: any) => ({
+                company: c?.courier_name || c?.courier_company_name || c?.name,
+                days: Number(c?.estimated_delivery_days),
+                etd: c?.etd,
+              }))
+              .filter((x: any) => Number.isFinite(x.days) && x.days >= 0);
+            if (withDays.length) {
+              const min = withDays.reduce((a: any, b: any) => (b.days < a.days ? b : a), withDays[0]);
+              const d = new Date();
+              d.setDate(d.getDate() + min.days);
+              next[String(sid)] = `${d.toLocaleDateString()} (${min.days} day(s))${min.company ? ` • ${min.company}` : ""}`;
+              return;
+            }
+            const etd = (Array.isArray(list) ? list : []).map((c: any) => c?.etd).find(Boolean);
+            next[String(sid)] = etd ? String(etd) : "Not available";
+          } catch {
+            next[String(sid)] = "Not available";
+          }
+        })
+      );
+
+      setEstimatedByStore(next);
+    },
+    [fetchServiceability, getPickupPincodeForStore, selectedPaymentMethod, storeIds, storeIds.length, storesById]
+  );
+
+  const deliveryPincode = React.useMemo(() => {
+    // Prefer selected address pincode; fallback to typed input
+    const fromSelected = (selectedAddress as any)?.pincode;
+    const fromForm = addressDetails.pincode;
+    return String(fromSelected || fromForm || "").trim();
+  }, [addressDetails.pincode, selectedAddress]);
+
+  React.useEffect(() => {
+    if (!/^[0-9]{6}$/.test(deliveryPincode)) return;
+    // Single-store ETA (uses pickupStore query); if store isn't loaded yet it will show "Checking store..."
+    updateEstimatedDelivery(deliveryPincode);
+    // Multi-store ETA needs storesById (public/by-ids) to be loaded; otherwise it gets stuck at "Checking store..."
+    if (Object.keys(storesById || {}).length > 0) {
+      updateEstimatedDeliveryForStores(deliveryPincode);
+    }
+  }, [
+    deliveryPincode,
+    pickupPincode,
+    selectedPaymentMethod,
+    storeIds.length,
+    storesById,
+    updateEstimatedDeliveryForStores,
+  ]);
+
+  React.useEffect(() => {
+    const pin = String(addressDetails.pincode ?? "").trim();
+    if (/^[0-9]{6}$/.test(pin) && pickupPincode) {
+      updateEstimatedDelivery(pin);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickupPincode]);
 
   const handleUpdateAddress = async () => {
     if (!validateAllAddressFields()) {
@@ -787,6 +1127,7 @@ export const BuyCard = (props: any) => {
           states: "",
           area: "",
           shipping: "",
+          pincode: "",
         });
       } else {
         toast.error("Failed to update address.");
@@ -822,6 +1163,7 @@ export const BuyCard = (props: any) => {
           states: "",
           area: "",
           shipping: "",
+          pincode: "",
           id: "",
         });
         setAddressErrors({
@@ -832,6 +1174,7 @@ export const BuyCard = (props: any) => {
           states: "",
           area: "",
           shipping: "",
+          pincode: "",
         });
       } else {
         toast.error("Failed to add address.");
@@ -855,6 +1198,11 @@ export const BuyCard = (props: any) => {
             name={null}
           ></User>
         );
+      case "store": {
+        const sid = data?.storeId ?? data?.store_id;
+        const name = sid != null ? storesById[String(sid)]?.storename : "";
+        return <p className="m-0 p-0 text-xs font-medium">{name || "—"}</p>;
+      }
       case "actions":
         return (
           <div className=" flex items-center">
@@ -896,7 +1244,7 @@ export const BuyCard = (props: any) => {
       default:
         return <p className="m-0 p-0">{data?.[columnKey]}</p>;
     }
-  }, []);
+  }, [storesById]);
 
   useEffect(() => {
     if (userId) {
@@ -1013,13 +1361,15 @@ export const BuyCard = (props: any) => {
                           <RadioGroup
                             value={selectedAddress?.id}
                             onValueChange={(value) => {
-                              const address = addresses.data.find((addr) => addr.id === value);
+                              const address = addresses.data.find(
+                                (addr) => String(addr.id) === String(value)
+                              );
                               setSelectedAddress(address);
                             }}
                           >
                             {addresses.data.map((address) => (
                               <Radio key={address.id} value={address.id}>
-                                {`${address.fullname}, ${address.shipping}, ${address.area}, ${address.city}, ${address.district}, ${address.states}, ${address.phone}`}
+                                {`${address.fullname}, ${address.shipping}, ${address.area}, ${address.city}, ${address.district || address.discrict || ""}, ${address.states}, ${address.phone}`}
                               </Radio>
                             ))}
                           </RadioGroup>
@@ -1174,6 +1524,60 @@ export const BuyCard = (props: any) => {
                             <p className="text-red-500 text-xs mt-1">{addressErrors.shipping}</p>
                           )}
                         </div>
+                        <div>
+                          <p className="text-xs text-default-500 mb-1">Pincode *</p>
+                          <input
+                            type="tel"
+                            name="pincode"
+                            placeholder="Pincode *"
+                            value={addressDetails.pincode}
+                            onChange={handleAddressChange}
+                            onBlur={(e) => {
+                              const v = e.target.value;
+                              const error = validateAddressField("pincode", v);
+                              setAddressErrors({ ...addressErrors, pincode: error });
+                              if (!error) updateEstimatedDelivery(v);
+                            }}
+                            maxLength={6}
+                            className={`w-full p-2 border rounded-md dark:bg-gray-700 dark:text-white ${
+                              addressErrors.pincode
+                                ? "border-red-500 dark:border-red-500"
+                                : "border-gray-300 dark:border-gray-600"
+                            }`}
+                          />
+                          {addressErrors.pincode && (
+                            <p className="text-red-500 text-xs mt-1">{addressErrors.pincode}</p>
+                          )}
+                          {/* {!addressErrors.pincode && estimatedDeliveryText && (
+                            <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white text-[11px] font-bold">
+                                  ETA
+                                </span>
+                                <span className="font-semibold">
+                                  {isFetchingServiceability ? "Checking delivery..." : estimatedDeliveryText}
+                                </span>
+                              </div>
+                            </div>
+                          )} */}
+                          {/* {Object.keys(estimatedByStore).length > 1 && (
+                            <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900">
+                              <div className="font-semibold mb-1">Estimated delivery by store</div>
+                              <div className="space-y-1">
+                                {storeIds.map((sid) => (
+                                  <div key={String(sid)} className="flex justify-between gap-3">
+                                    <span className="text-slate-700">
+                                      {storesById[String(sid)]?.storename || `Store ${sid}`}
+                                    </span>
+                                    <span className="font-medium">
+                                      {estimatedByStore[String(sid)] || "—"}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )} */}
+                        </div>
                         <div className="flex justify-between">
                           <Button
                             onClick={handleAddAddress}
@@ -1237,7 +1641,7 @@ export const BuyCard = (props: any) => {
                     </>}
                     <>
                       <Divider orientation="horizontal" className="my-2" />
-                      <div className="paymetoptionBg mx-3 mt-2 rounded-lg">
+                      <div className="paymetoptionBg mx-3 mt-2 rounded-lg relative pb-2">
                         <div className="font-medium paymetoption text-base mx-3 pb-2 pt-2">
                           Payment Options
                         </div>
@@ -1303,7 +1707,149 @@ export const BuyCard = (props: any) => {
                             </div>
                           )}
                         </RadioGroup>
-                        <div className="flex items-center justify-center mt-4 mb-1">
+                        {isOpenCartModal.type === "Product" && shiprocketStoreIds.length > 0 && (
+                          <div className="mx-3 mt-3 rounded-lg border border-slate-200 bg-white/70 p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="font-semibold text-sm text-slate-900">
+                                Delivery info (by store)
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                Delivery pincode: <span className="font-medium">{deliveryPincode || "—"}</span>
+                              </div>
+                            </div>
+                            <div className="mt-2 space-y-2">
+                              {shiprocketStoreIds.map((sid) => {
+                                const s = storesById[String(sid)];
+                                const pickupPin = getPickupPincodeForStore(sid);
+                                const eta = estimatedByStore[String(sid)] || (estimatedDeliveryText && storeIds.length === 1 ? estimatedDeliveryText : "");
+                                const itemsForStore = (cart?.data || []).filter((c: any) => String(c.storeId ?? c.store_id) === String(sid));
+                                return (
+                                  <div
+                                    key={String(sid)}
+                                    className="rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2"
+                                  >
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <div className="text-sm font-semibold text-slate-900">
+                                        {s?.storename || `Store ${sid}`}
+                                      </div>
+                                      <div className="text-xs text-slate-600">
+                                        Pickup: <span className="font-medium">{pickupPin || "—"}</span>
+                                      </div>
+                                    </div>
+                                    {itemsForStore.length > 0 && (
+                                      <div className="mt-2 rounded-md bg-white/70 border border-slate-200 px-2 py-2">
+                                        <div className="text-xs font-semibold text-slate-700 mb-1">
+                                          Products
+                                        </div>
+                                        <div className="space-y-1">
+                                          {itemsForStore.map((it: any) => (
+                                            <div
+                                              key={`${sid}-${it.id ?? it.productId}`}
+                                              className="flex items-center justify-between gap-3 text-xs text-slate-800"
+                                            >
+                                              <div className="min-w-0">
+                                                <span className="font-medium truncate block max-w-[220px]">
+                                                  {it.name || `Product ${it.productId ?? ""}`}
+                                                </span>
+                                                <span className="text-[11px] text-slate-500">
+                                                  Qty: {it.qty ?? 1}
+                                                  {it.size ? ` • ${it.size}` : ""}
+                                                </span>
+                                                <span className="text-[11px] text-emerald-700 font-semibold">
+                                                  Delivery:{" "}
+                                                  {isFetchingServiceability
+                                                    ? "Checking..."
+                                                    : eta || "Enter pincode"}
+                                                </span>
+                                              </div>
+                                              <div className="shrink-0 font-semibold">
+                                                ₹{Number(it.price ?? 0) * Number(it.qty ?? 1)}
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    <div className="mt-1 text-sm text-emerald-900">
+                                      <span className="inline-flex items-center gap-2">
+                                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white text-[11px] font-bold">
+                                          ETA
+                                        </span>
+                                        <span className="font-semibold">
+                                          {isFetchingServiceability ? "Checking delivery..." : eta || "Enter pincode to calculate"}
+                                        </span>
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        {isOpenCartModal.type === "Product" && localStoreIds.length > 0 && (
+                          <div className="mx-3 mt-3 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="font-semibold text-sm text-amber-900">
+                                Local delivery (by store)
+                              </div>
+                              <div className="text-xs text-amber-800">
+                                Delivery will be updated by the store
+                              </div>
+                            </div>
+                            <div className="mt-2 space-y-2">
+                              {localStoreIds.map((sid) => {
+                                const s = storesById[String(sid)];
+                                const itemsForStore = (cart?.data || []).filter((c: any) => String(c.storeId ?? c.store_id) === String(sid));
+                                if (!itemsForStore.length) return null;
+                                return (
+                                  <div
+                                    key={`local-${String(sid)}`}
+                                    className="rounded-md border border-amber-200 bg-white/70 px-3 py-2"
+                                  >
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <div className="text-sm font-semibold text-slate-900">
+                                        {s?.storename || `Store ${sid}`}
+                                      </div>
+                                      <div className="text-xs font-semibold text-amber-900">
+                                        Your order update will get from store
+                                      </div>
+                                    </div>
+                                    <div className="mt-2 rounded-md bg-white border border-slate-200 px-2 py-2">
+                                      <div className="text-xs font-semibold text-slate-700 mb-1">
+                                        Products
+                                      </div>
+                                      <div className="space-y-1">
+                                        {itemsForStore.map((it: any) => (
+                                          <div
+                                            key={`local-${sid}-${it.id ?? it.productId}`}
+                                            className="flex items-center justify-between gap-3 text-xs text-slate-800"
+                                          >
+                                            <div className="min-w-0">
+                                              <span className="font-medium truncate block max-w-[220px]">
+                                                {it.name || `Product ${it.productId ?? ""}`}
+                                              </span>
+                                              <span className="text-[11px] text-slate-500">
+                                                Qty: {it.qty ?? 1}
+                                                {it.size ? ` • ${it.size}` : ""}
+                                              </span>
+                                              <span className="text-[11px] text-amber-800 font-semibold">
+                                                Delivery: Store will contact / update
+                                              </span>
+                                            </div>
+                                            <div className="shrink-0 font-semibold">
+                                              ₹{Number(it.price ?? 0) * Number(it.qty ?? 1)}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        <div className="sticky bottom-0 mt-4 -mx-3 bg-white/95 backdrop-blur border-t border-slate-200 px-3 py-3 flex items-center justify-center">
                           {isOpenCartModal.type === "Product" ?
                             <Button
                               size="sm"
@@ -1331,6 +1877,17 @@ export const BuyCard = (props: any) => {
                             >
                               {"Book Service"}
                             </Button>}
+                          {isOpenCartModal.type === "Product" && isSelectAddress && (
+                            <Button
+                              size="sm"
+                              color="default"
+                              variant="flat"
+                              className="me-5"
+                              onClick={() => setIsSelectAddress(false)}
+                            >
+                              Back to Cart
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             color="primary"

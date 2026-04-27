@@ -37,6 +37,8 @@ interface TableProps {
   onSelectionChange?: (keys: any) => void;
   showColumnsFilter?: boolean;
   excludeStatuses?: string[];
+  addButtonLabel?: string;
+  onAddClick?: () => void;
 }
 
 export const TableList = (props: TableProps) => {
@@ -159,6 +161,16 @@ export const TableList = (props: TableProps) => {
           user?.["ownername"],
           user?.["phone"],
           user?.["email"],
+          user?.["subscription"]?.subscriptionPlan,
+          user?.["subscription"]?.subscriptionType,
+          user?.["subscription"]?.status,
+          user?.["subscriptionPlan"],
+          user?.["subscriptionType"],
+          user?.["subscriptionStatus"],
+          user?.["subId"],
+          user?.["paymentId"],
+          user?.["freeCount"],
+          user?.["createdAt"],
         ].filter(Boolean).map((field) => String(field).toLowerCase());
         
         return searchableFields.some((field) => field.includes(searchLower));
@@ -352,6 +364,16 @@ export const TableList = (props: TableProps) => {
               )}
             </div>
           )}
+          {props.onAddClick && (
+            <Button
+              color="primary"
+              size="md"
+              endContent={<PlusIcon />}
+              onPress={props.onAddClick}
+            >
+              {props.addButtonLabel || "Add"}
+            </Button>
+          )}
         </div>
         <div className="flex justify-between items-center">
           <div className="flex justify-between items-center">
@@ -427,6 +449,8 @@ export const TableList = (props: TableProps) => {
     filteredItems.length,
     onSearchChange,
     hasSearchFilter,
+    props.onAddClick,
+    props.addButtonLabel,
   ]);
 
   return !props.refreshOrder ? (

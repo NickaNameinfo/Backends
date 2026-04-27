@@ -9,6 +9,7 @@ import { useAppDispatch } from "./Components/Common/hooks.js";
 import { onUpdateStoreList, updateLoginDetails } from "./Components/Common/globalSlice.js";
 import { useGetStoresQuery } from "./views/pages/Store/Service.mjs";
 import { useDisableRightClick } from "./utils/rightClickHandler";
+import { recordVisit } from "./utils/visitTracker.mjs";
 import "react-toastify/dist/ReactToastify.css";
 import 'sweetalert2/src/sweetalert2.scss'
 import "yet-another-react-lightbox/styles.css";
@@ -25,13 +26,13 @@ function App() {
   // Can be disabled via environment variable: VITE_DISABLE_RIGHT_CLICK=false
   const disableDevTools = import.meta.env.VITE_DISABLE_RIGHT_CLICK !== 'false';
   useDisableRightClick(disableDevTools, false);
-  const id = getCookie("id");
+  const id = getCookie("id") || localStorage.getItem("id");
   const dispatch = useAppDispatch();
-  const { data, error, refetch } = useGetUserQuery(id);
+  const { data, error, refetch } = useGetUserQuery(id, { skip: !id });
   const { data: storeDetails, error: storeDetailsError, refetch: storeDetailsRefetch } = useGetStoresQuery();
 
   React.useEffect(() => {
-    refetch();
+    if (id) refetch();
     getLocation()
   }, [id]);
 
@@ -61,8 +62,12 @@ function App() {
     if (storeDetails) {
       dispatch(onUpdateStoreList(storeDetails?.data))
     }
-  }, [storeDetails])
+  }, [storeDetails]);
 
+  // Record site visit (once per app load)
+  React.useEffect(() => {
+    recordVisit();
+  }, []);
 
   return (
     <Suspense fallback={loading}>

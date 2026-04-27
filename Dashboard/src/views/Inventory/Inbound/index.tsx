@@ -1,6 +1,8 @@
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Controller, useForm } from "react-hook-form";
 import {
+  Autocomplete,
+  AutocompleteItem,
   Button,
   Chip,
   Dropdown,
@@ -54,8 +56,8 @@ const InboundInventory = () => {
   const currentRole = getCookie("role");
   const userId = getCookie("id");
   const [selectedClient, setSelectedClient] = React.useState<any>(null);
-  const [invoicePreview, setInvoicePreview] = React.useState<string | null>(null);
-  const [selectedInvoiceFileName, setSelectedInvoiceFileName] = React.useState("No file selected");
+  const [invoicePreviews, setInvoicePreviews] = React.useState<string[]>([]);
+  const [selectedInvoiceFileNames, setSelectedInvoiceFileNames] = React.useState<string[]>([]);
   const [uploadFile] = useUploadFileMutation();
   const { data: currentUserData } = useGetUserQuery(Number(userId), { skip: !userId });
   const [filters, setFilters] = React.useState({
@@ -197,13 +199,12 @@ const InboundInventory = () => {
         }
       }
 
-      // Set invoice preview if invoice exists
+      // Set invoice preview if invoice exists (single or comma-separated)
       if (transactionToEdit.invoice) {
-        const invoiceUrl = transactionToEdit.invoice.startsWith("http") 
-          ? transactionToEdit.invoice 
-          : `${infoData.baseApi}/${transactionToEdit.invoice}`;
-        setInvoicePreview(invoiceUrl);
-        setSelectedInvoiceFileName(transactionToEdit.invoice.split("/").pop() || "Invoice file");
+        const urls = transactionToEdit.invoice.split(",").map((s: string) => s.trim()).filter(Boolean);
+        const fullUrls = urls.map((p: string) => p.startsWith("http") ? p : `${infoData.baseApi}/${p}`);
+        setInvoicePreviews(fullUrls);
+        setSelectedInvoiceFileNames(urls.map((p: string) => p.split("/").pop() || "Invoice file"));
       }
     } else if (!isEditMode) {
       // Reset form when not in edit mode
@@ -218,35 +219,44 @@ const InboundInventory = () => {
         invoice: null,
       });
       setSelectedClient(null);
-      setInvoicePreview(null);
-      setSelectedInvoiceFileName("No file selected");
+      setInvoicePreviews([]);
+      setSelectedInvoiceFileNames([]);
     }
   }, [transactionToEdit, isEditMode, reset, clientsData]);
 
   const onSubmit = async (formData: any) => {
-    let invoiceUrl = formData.invoice;
+    let invoiceUrl: string | null = formData.invoice;
 
-    // Handle invoice upload if it's a new file
-    if (formData.invoice instanceof File) {
-      const invoiceFormData = new FormData();
-      invoiceFormData.append("file", formData.invoice);
-      invoiceFormData.append("invoiceNumber", formData.invoiceNumber || "invoice");
-      // Backend expects storeName to create directory structure
+    // Handle single file (legacy) or multiple files
+    const files = Array.isArray(formData.invoice)
+      ? formData.invoice.filter((f: any) => f instanceof File)
+      : formData.invoice instanceof File
+        ? [formData.invoice]
+        : [];
+
+    if (files.length > 0) {
       const storeName = currentUserData?.data?.storename ||
         currentUserData?.data?.storeName ||
         vendorId ||
         storeId ||
         "STORE";
-      invoiceFormData.append("storeName", storeName);
-      const invoiceUploadResult = await uploadFile(invoiceFormData);
-      if (invoiceUploadResult?.data?.success) {
-        invoiceUrl = invoiceUploadResult.data.fileUrl;
-      } else {
-        alert("Failed to upload invoice.");
-        return;
+      const uploadedUrls: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const invoiceFormData = new FormData();
+        invoiceFormData.append("file", file);
+        invoiceFormData.append("invoiceNumber", `${formData.invoiceNumber || "invoice"}_${i + 1}`);
+        invoiceFormData.append("storeName", storeName);
+        const invoiceUploadResult = await uploadFile(invoiceFormData);
+        if (invoiceUploadResult?.data?.success) {
+          uploadedUrls.push(invoiceUploadResult.data.fileUrl);
+        } else {
+          alert(`Failed to upload file: ${(file as File).name}`);
+          return;
+        }
       }
+      invoiceUrl = uploadedUrls.join(",");
     } else if (isEditMode && transactionToEdit?.invoice) {
-      // Keep existing invoice URL if not uploading a new file
       invoiceUrl = transactionToEdit.invoice;
     }
 
@@ -274,8 +284,8 @@ const InboundInventory = () => {
 
       if (result?.success) {
         reset();
-        setInvoicePreview(null);
-        setSelectedInvoiceFileName("No file selected");
+        setInvoicePreviews([]);
+        setSelectedInvoiceFileNames([]);
         // Show success message before navigation
         alert(isEditMode ? "Purchase record updated successfully" : "Purchase record added successfully");
         // Navigate to PurchaseList page (it will handle its own data fetching)
@@ -508,70 +518,68 @@ const InboundInventory = () => {
                 required: "Product selection is required",
                 validate: (value) => value !== "0" && value !== 0 || "Please select a valid product"
               }}
-              render={({ field }) => (
-                <div className="flex flex-col">
-                  <Select
-                    label="Select Product"
-                    variant="faded"
-                    size="sm"
-                    placeholder={isLoadingProductsFinal ? "Loading products..." : "Choose a product"}
-                    isRequired
-                    isInvalid={!!errors.productId}
-                    errorMessage={errors.productId?.message as string}
-                    selectedKeys={field.value ? new Set([String(field.value)]) : new Set([])}
-                    onSelectionChange={(keys) => {
-                      const selectedKey = Array.from(keys)[0];
-                      field.onChange(selectedKey ? Number(selectedKey) : "");
-                    }}
-                    isLoading={isLoadingProductsFinal}
-                    isDisabled={isLoadingProductsFinal}
-                  >
-                    <SelectItem key={0}>Select Product</SelectItem>
-                    {productsErrorFinal ? (
-                      <SelectItem key="error" isDisabled>
-                        Error: {productsErrorFinal?.data?.message || productsErrorFinal?.message || "Failed to load products"}
-                      </SelectItem>
-                    ) : finalProductsData?.data && Array.isArray(finalProductsData.data) && finalProductsData.data.length > 0 ? (
-                      finalProductsData.data.map((item: any) => {
-                        // Handle different data structures based on role
-                        const product = item?.product || item;
-                        const productId = product?.id || item?.id;
-                        const productName = product?.name || item?.name || `Product ${productId}`;
-                        return (
-                          <SelectItem key={productId}>{productName}</SelectItem>
-                        );
-                      })
-                    ) : !isLoadingProductsFinal ? (
-                      <SelectItem key="empty" isDisabled>
-                        No products available. Create products first.
-                      </SelectItem>
-                    ) : null}
-                  </Select>
-                  {productsErrorFinal && (
-                    <div className="mt-1">
-                      <p className="text-danger text-tiny">
-                        {productsErrorFinal?.data?.message || productsErrorFinal?.message || "Failed to load products"}
-                      </p>
-                      <Button
-                        size="sm"
-                        variant="light"
-                        onClick={() => {
-                          if (currentRole === "0") {
-                            refetchProducts();
-                          } else if (currentRole === "2") {
-                            vendorRefetch();
-                          } else {
-                            storeProductsRefetch();
-                          }
-                        }}
-                        className="mt-1"
-                      >
-                        Retry
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
+              render={({ field }) => {
+                const productList = finalProductsData?.data && Array.isArray(finalProductsData.data) ? finalProductsData.data : [];
+                const autocompleteItems = productList.map((item: any) => {
+                  const product = item?.product || item;
+                  const productId = product?.id || item?.id;
+                  const productName = product?.name || item?.name || `Product ${productId}`;
+                  return { key: String(productId), value: String(productId), label: productName };
+                });
+                return (
+                  <div className="flex flex-col">
+                    <Autocomplete
+                      label="Select Product"
+                      variant="faded"
+                      size="sm"
+                      placeholder={isLoadingProductsFinal ? "Loading products..." : "Search or select a product"}
+                      isRequired
+                      isInvalid={!!errors.productId}
+                      errorMessage={errors.productId?.message as string}
+                      selectedKey={field.value ? String(field.value) : null}
+                      onSelectionChange={(key) => {
+                        field.onChange(key ? Number(key) : "");
+                      }}
+                      isLoading={isLoadingProductsFinal}
+                      isDisabled={isLoadingProductsFinal}
+                      defaultFilter={(textValue, inputValue) => {
+                        if (!inputValue) return true;
+                        return String(textValue).toLowerCase().includes(inputValue.toLowerCase());
+                      }}
+                      defaultItems={autocompleteItems}
+                    >
+                      {(item: { key: string; value: string; label: string }) => (
+                        <AutocompleteItem key={item.key} value={item.value}>
+                          {item.label}
+                        </AutocompleteItem>
+                      )}
+                    </Autocomplete>
+                    {productsErrorFinal && (
+                      <div className="mt-1">
+                        <p className="text-danger text-tiny">
+                          {productsErrorFinal?.data?.message || productsErrorFinal?.message || "Failed to load products"}
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="light"
+                          onClick={() => {
+                            if (currentRole === "0") {
+                              refetchProducts();
+                            } else if (currentRole === "2") {
+                              vendorRefetch();
+                            } else {
+                              storeProductsRefetch();
+                            }
+                          }}
+                          className="mt-1"
+                        >
+                          Retry
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              }}
             />
 
             <Controller
@@ -731,16 +739,15 @@ const InboundInventory = () => {
               name="invoice"
               control={control}
               rules={{
-                required: !isEditMode ? "Invoice file upload is required" : false,
+                required: !isEditMode ? "At least one invoice file is required" : false,
                 validate: (value) => {
-                  if (!isEditMode && !value) return "Invoice file upload is required";
-                  if (value instanceof File) {
-                    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
-                    if (!validTypes.includes(value.type)) {
-                      return "File must be an image (JPEG, PNG, GIF, WEBP) or PDF";
-                    }
-                    if (value.size > 5 * 1024 * 1024) {
-                      return "File size must not exceed 5MB";
+                  const files = Array.isArray(value) ? value : value instanceof File ? [value] : [];
+                  if (!isEditMode && files.length === 0 && !value) return "At least one invoice file is required";
+                  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+                  for (const f of files) {
+                    if (f instanceof File) {
+                      if (!validTypes.includes(f.type)) return "All files must be image (JPEG, PNG, GIF, WEBP) or PDF";
+                      if (f.size > 5 * 1024 * 1024) return "Each file must not exceed 5MB";
                     }
                   }
                   return true;
@@ -749,7 +756,7 @@ const InboundInventory = () => {
               render={({ field }) => (
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium text-foreground">
-                    Upload Invoice {!isEditMode && <span className="text-danger">*</span>}
+                    Upload Invoice (multiple) {!isEditMode && <span className="text-danger">*</span>}
                     {isEditMode && <span className="text-default-400 text-tiny ml-2">(Optional - leave empty to keep existing)</span>}
                   </label>
                   <div style={{ position: "relative", width: "100%" }}>
@@ -757,6 +764,7 @@ const InboundInventory = () => {
                       type="file"
                       id="invoiceFile"
                       accept="image/*,application/pdf"
+                      multiple
                       style={{
                         opacity: 0,
                         position: "absolute",
@@ -764,41 +772,50 @@ const InboundInventory = () => {
                         width: "100%",
                       }}
                       onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
-                          if (!validTypes.includes(file.type)) {
-                            alert("Invalid file type. Please select an image (JPEG, PNG, GIF, WEBP) or PDF file.");
-                            e.target.value = '';
-                            setSelectedInvoiceFileName("No file selected");
-                            setInvoicePreview(null);
-                            field.onChange(null);
-                            return;
-                          }
-                          if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                            alert("File size exceeds 5MB. Please select a smaller file.");
-                            e.target.value = '';
-                            setSelectedInvoiceFileName("No file selected");
-                            setInvoicePreview(null);
-                            field.onChange(null);
-                            return;
-                          }
-                          field.onChange(file);
-                          setSelectedInvoiceFileName(file.name);
-                          if (file.type.startsWith('image/')) {
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setInvoicePreview(reader.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                          } else {
-                            setInvoicePreview(null);
-                          }
-                        } else {
-                          setSelectedInvoiceFileName("No file selected");
-                          setInvoicePreview(null);
-                          field.onChange(null);
+                        const fileList = e.target.files;
+                        if (!fileList || fileList.length === 0) {
+                          setSelectedInvoiceFileNames([]);
+                          setInvoicePreviews([]);
+                          field.onChange(isEditMode ? null : []);
+                          e.target.value = "";
+                          return;
                         }
+                        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+                        const files: File[] = [];
+                        const names: string[] = [];
+                        for (let i = 0; i < fileList.length; i++) {
+                          const file = fileList[i];
+                          if (!validTypes.includes(file.type)) {
+                            alert(`Invalid type: ${file.name}. Use image (JPEG, PNG, GIF, WEBP) or PDF.`);
+                            e.target.value = "";
+                            return;
+                          }
+                          if (file.size > 5 * 1024 * 1024) {
+                            alert(`File too large (max 5MB): ${file.name}`);
+                            e.target.value = "";
+                            return;
+                          }
+                          files.push(file);
+                          names.push(file.name);
+                        }
+                        field.onChange(files);
+                        setSelectedInvoiceFileNames(names);
+                        const imageFiles = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+                        if (imageFiles.length === 0) {
+                          setInvoicePreviews([]);
+                          return;
+                        }
+                        let loaded = 0;
+                        const previews: string[] = [];
+                        imageFiles.forEach((file, idx) => {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            previews[idx] = reader.result as string;
+                            loaded++;
+                            if (loaded === imageFiles.length) setInvoicePreviews(previews.filter(Boolean));
+                          };
+                          reader.readAsDataURL(file);
+                        });
                       }}
                     />
                     <label
@@ -832,23 +849,28 @@ const InboundInventory = () => {
                           />
                         </svg>
                         <span className="text-sm text-foreground-600">
-                          {selectedInvoiceFileName}
+                          {selectedInvoiceFileNames.length === 0
+                            ? "No files selected"
+                            : `${selectedInvoiceFileNames.length} file(s): ${selectedInvoiceFileNames.join(", ")}`}
                         </span>
                         <span className="text-xs text-foreground-400">
-                          Click to upload (Max 5MB, Image or PDF)
+                          Click to upload multiple (Max 5MB each, Image or PDF)
                         </span>
                       </div>
                     </label>
                   </div>
-                  {invoicePreview && (
-                    <div className="mt-2">
-                      <Image
-                        src={invoicePreview}
-                        alt="Invoice Preview"
-                        width={150}
-                        height={150}
-                        className="rounded-lg border border-default-200"
-                      />
+                  {invoicePreviews.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {invoicePreviews.map((src, i) => (
+                        <Image
+                          key={i}
+                          src={src}
+                          alt={`Invoice preview ${i + 1}`}
+                          width={120}
+                          height={120}
+                          className="rounded-lg border border-default-200 object-cover"
+                        />
+                      ))}
                     </div>
                   )}
                   {errors.invoice && (

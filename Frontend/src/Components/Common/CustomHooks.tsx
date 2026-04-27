@@ -14,27 +14,34 @@ export const useBoolean = (initialValue = false) => {
 export const authenticate = (user, next) => {
   const now = new Date();
   if (typeof window !== "undefined") {
+    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    // Persist in both cookies + localStorage (mobile uses local persistence)
+    try {
+      localStorage.setItem("token", user.token ?? "");
+      localStorage.setItem("role", String(user.role ?? ""));
+      localStorage.setItem("id", String(user.id ?? ""));
+    } catch {}
     setCookie(
       "token",
       user.token,
-      new Date(now.getTime() + 24 * 60 * 60 * 1000)
+      expiresAt
     );
-    setCookie("role", user.role, new Date(now.getTime() + 24 * 60 * 60 * 1000));
-    setCookie("id", user.id, new Date(now.getTime() + 24 * 60 * 60 * 1000));
+    setCookie("role", user.role, expiresAt);
+    setCookie("id", user.id, expiresAt);
     setCookie(
       "vendorId",
       user?.data?.vendorId,
-      new Date(now.getTime() + 24 * 60 * 60 * 1000)
+      expiresAt
     );
     setCookie(
       "storeId",
       user?.data?.storeId,
-      new Date(now.getTime() + 24 * 60 * 60 * 1000)
+      expiresAt
     );
     setCookie(
       "plan",
       user?.data?.plan,
-      new Date(now.getTime() + 24 * 60 * 60 * 1000)
+      expiresAt
     );
     next();
   }

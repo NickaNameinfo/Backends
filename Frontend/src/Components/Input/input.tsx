@@ -79,7 +79,7 @@ const InputNextUI = (props: InputFieldProps) => {
             }`,
           ],
         }}
-        className={`${props.className && props.className} max-w-xs`}
+        className={`${props.className ?? ""}`}
         variant={props?.variant ?? "faded"}
         color={props?.errorMessage ? "danger" : props?.color ?? "default"}
         validationBehavior={props.validationBehavior}

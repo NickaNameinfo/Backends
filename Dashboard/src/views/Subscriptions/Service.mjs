@@ -35,7 +35,7 @@ export const SucriptioniApi = createApi({
     }),
     deleteSubscription: builder.mutation({
       query: (id) => ({
-        url: `/subscription/${id}`,
+        url: `/subscription/delete/${id}`,
         method: "DELETE",
       }),
     }),

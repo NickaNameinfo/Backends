@@ -17,13 +17,16 @@ const CustomersList = () => {
   const { data, error, refetch } = useGetAllUserQuery();
 
   const defaultCloumns = [
+    "id",
+    "type",
     "firstName",
     "email",
     "phone",
   ];
 
   const columns = [
-    { name: "S.No", id: "id", sortable: true },
+    { name: "Customer ID", id: "id", sortable: true },
+    { name: "Type", id: "type", sortable: true },
     { name: "firstName", id: "firstName", sortable: true },
     { name: "email", id: "email", sortable: true },
     { name: "phone", id: "phone" },
@@ -39,6 +42,14 @@ const CustomersList = () => {
 
     const cellValue = user[columnKey];
     switch (columnKey) {
+      case "type": {
+        const role = String(user?.role ?? "").toLowerCase();
+        if (role === "0" || role === "admin") return "Admin";
+        // Heuristic based on ids present (backend exposes vendorId/storeId)
+        if (user?.vendorId) return "Vendor user";
+        if (user?.storeId) return "Store user";
+        return "Customer";
+      }
       case "storename":
         return (
           <User

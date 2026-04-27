@@ -14,16 +14,19 @@ export const StoreApi = createApi({
   baseQuery: axiosBaseQuery,
   endpoints: (builder) => ({
     getStoresProductByID: builder.query({
-      query: (id) => ({
+      query: ({ id, page = 1, limit = 20 } = {}) => ({
         url: `/store/product/getAllProductById/${id}`,
         method: "GET",
+        params: { page, limit },
       }),
     }),
     getStores: builder.query({
-      query: (id) => ({
+      query: ({ page = 1, limit = 20 } = {}) => ({
         url: `/store/list`,
         params: {
-          currentLocation: localStorage.getItem('latitude') + ',' + localStorage.getItem('longitude')
+          currentLocation: localStorage.getItem('latitude') + ',' + localStorage.getItem('longitude'),
+          page,
+          limit,
         },
         method: "GET",
       }),
@@ -42,6 +45,13 @@ export const StoreApi = createApi({
           currentLocation: localStorage.getItem('latitude') + ',' + localStorage.getItem('longitude')
         },
         method: "GET",
+      }),
+    }),
+    getStoresByIds: builder.mutation({
+      query: (body) => ({
+        url: `/store/public/by-ids`,
+        method: "POST",
+        body,
       }),
     }),
     getCartByProductId: builder.query({
@@ -105,31 +115,37 @@ export const StoreApi = createApi({
       }),
     }),
     getStoresByCategory: builder.query({
-      query: (id) => ({
+      query: ({ id, page = 1, limit = 20 } = {}) => ({
         url: `/store/filterByCategory`,
         params: {
           categoryIds: id,
-          currentLocation: localStorage.getItem('latitude') + ',' + localStorage.getItem('longitude')
+          currentLocation: localStorage.getItem('latitude') + ',' + localStorage.getItem('longitude'),
+          page,
+          limit,
         },
         method: "GET",
       }),
     }),
     getStoresByFilters: builder.query({
-      query: (query) => ({
+      query: ({ query, page = 1, limit = 20 } = {}) => ({
         url: `/store/getAllStoresByFilters`,
         params: {
           search: query,
-          currentLocation: localStorage.getItem('latitude') + ',' + localStorage.getItem('longitude')
+          currentLocation: localStorage.getItem('latitude') + ',' + localStorage.getItem('longitude'),
+          page,
+          limit,
         },
         method: "GET",
       }),
     }),
     getStoresByPaymentType: builder.query({
-      query: (query) => ({
+      query: ({ query, page = 1, limit = 20 } = {}) => ({
         url: `/store/getAllStoresByFilters`,
         params: {
           paymentModes: query,
-          currentLocation: localStorage.getItem('latitude') + ',' + localStorage.getItem('longitude')
+          currentLocation: localStorage.getItem('latitude') + ',' + localStorage.getItem('longitude'),
+          page,
+          limit,
         },
         method: "GET",
       }),
@@ -203,6 +219,76 @@ export const StoreApi = createApi({
         method: "DELETE",
       }),
     }),
+    /**
+     * Shiprocket proxy (credentials live on backend)
+     */
+    shiprocketServiceability: builder.query({
+      query: (params) => ({
+        // fetchBaseQuery may ignore `params` in some setups; build querystring explicitly
+        url: `/shiprocket/courier/serviceability?${new URLSearchParams(
+          Object.entries(params || {}).reduce((acc, [k, v]) => {
+            if (v !== undefined && v !== null && String(v) !== "") acc[k] = String(v);
+            return acc;
+          }, {})
+        ).toString()}`,
+        method: "GET",
+      }),
+    }),
+    shiprocketCreateOrderAdhoc: builder.mutation({
+      query: (body) => ({
+        url: `/shiprocket/orders/create/adhoc`,
+        method: "POST",
+        body,
+      }),
+    }),
+    shiprocketAssignAwb: builder.mutation({
+      query: (body) => ({
+        url: `/shiprocket/courier/assign/awb`,
+        method: "POST",
+        body,
+      }),
+    }),
+    shiprocketGeneratePickup: builder.mutation({
+      query: (body) => ({
+        url: `/shiprocket/courier/generate/pickup`,
+        method: "POST",
+        body,
+      }),
+    }),
+    shiprocketGenerateManifest: builder.mutation({
+      query: (body) => ({
+        url: `/shiprocket/manifests/generate`,
+        method: "POST",
+        body,
+      }),
+    }),
+    shiprocketPrintManifest: builder.mutation({
+      query: (body) => ({
+        url: `/shiprocket/manifests/print`,
+        method: "POST",
+        body,
+      }),
+    }),
+    shiprocketGenerateLabel: builder.mutation({
+      query: (body) => ({
+        url: `/shiprocket/courier/generate/label`,
+        method: "POST",
+        body,
+      }),
+    }),
+    shiprocketPrintInvoice: builder.mutation({
+      query: (body) => ({
+        url: `/shiprocket/orders/print/invoice`,
+        method: "POST",
+        body,
+      }),
+    }),
+    shiprocketTrackAwb: builder.query({
+      query: (awb) => ({
+        url: `/shiprocket/courier/track/awb/${awb}`,
+        method: "GET",
+      }),
+    }),
   }),
 });
 
@@ -215,6 +301,7 @@ export const {
   useGetCartByProductIdQuery,
   useUpdateCartMutation,
   useGetStoresByIdQuery,
+  useGetStoresByIdsMutation,
   useGetStoresByCategoryQuery,
   useGetStoresByFiltersQuery,
   useGetStoresByPaymentTypeQuery,
@@ -232,5 +319,24 @@ export const {
   useGetProductFeedbackByIdQuery,
   useUpdateProductFeedbackMutation,
   useDeleteProductFeedbackMutation,
+  useShiprocketServiceabilityQuery,
+  useShiprocketCreateOrderAdhocMutation,
+  useShiprocketAssignAwbMutation,
+  useShiprocketGeneratePickupMutation,
+  useShiprocketGenerateManifestMutation,
+  useShiprocketPrintManifestMutation,
+  useShiprocketGenerateLabelMutation,
+  useShiprocketPrintInvoiceMutation,
+  useShiprocketTrackAwbQuery,
+  useLazyShiprocketTrackAwbQuery,
 } = StoreApi;
 export const { endpoints } = StoreApi;
+
+export const {
+  useLazyGetStoresQuery,
+  useLazyGetStoresByCategoryQuery,
+  useLazyGetStoresByFiltersQuery,
+  useLazyGetStoresByPaymentTypeQuery,
+  useLazyGetStoresProductByIDQuery,
+  useLazyShiprocketServiceabilityQuery,
+} = StoreApi;

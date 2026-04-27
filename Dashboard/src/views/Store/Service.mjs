@@ -12,6 +12,12 @@ export const StoreApi = createApi({
         method: "GET",
       }),
     }),
+    getTrashedStores: builder.query({
+      query: () => ({
+        url: `/store/admin/trash-list`,
+        method: "GET",
+      }),
+    }),
     getStoreArea: builder.query({
       query: (body) => ({
         url: `/location/area/list`,
@@ -21,6 +27,18 @@ export const StoreApi = createApi({
     deleteStore: builder.mutation({
       query: (id) => ({
         url: `/store/delete/${id}`,
+        method: "DELETE",
+      }),
+    }),
+    restoreStore: builder.mutation({
+      query: (id) => ({
+        url: `/store/restore/${id}`,
+        method: "POST",
+      }),
+    }),
+    destroyStorePermanent: builder.mutation({
+      query: (id) => ({
+        url: `/store/destroy/${id}`,
         method: "POST",
       }),
     }),
@@ -50,16 +68,26 @@ export const StoreApi = createApi({
         body,
       }),
     }),
+    getStoreVisitReports: builder.query({
+      query: (params) => ({
+        url: `/store/visit/reports`,
+        method: "GET",
+      }),
+    }),
   }),
 });
 
 export const {
   useGetStoreQuery,
+  useGetTrashedStoresQuery,
   useGetStoreAreaQuery,
   useDeleteStoreMutation,
+  useRestoreStoreMutation,
+  useDestroyStorePermanentMutation,
   useAddStoreMutation,
   useGetStoresByIDQuery,
   useUpdateStoreMutation,
-  useGetStoresProductByIDQuery
+  useGetStoresProductByIDQuery,
+  useGetStoreVisitReportsQuery,
 } = StoreApi;
 export const { endpoints } = StoreApi;

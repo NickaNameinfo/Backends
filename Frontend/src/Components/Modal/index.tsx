@@ -9,7 +9,7 @@ import {
 
 interface IModalprops {
   isOpen: boolean;
-  onOpenChange: () => void;
+  onOpenChange: (isOpen?: boolean) => void;
   headerIcon?: any;
   heading: string;
   content: any;

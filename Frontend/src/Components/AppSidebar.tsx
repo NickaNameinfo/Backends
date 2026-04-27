@@ -75,7 +75,7 @@ export const AppSidebar = () => {
   const [onSeletedItem, setOnSelectedItem] = React.useState(null);
   const [oderIsOpen, setOrderIsOpen] = React.useState(false);
   const [isPopOverOpen, setIsPopOverOpen] = React.useState(false);
-  const id = getCookie("id");
+  const id = getCookie("id") || localStorage.getItem("id");
   const dispatch = useAppDispatch();
 
   const {
@@ -129,15 +129,26 @@ export const AppSidebar = () => {
   };
 
   const handleFilters = (result) => {
+    const isPaymentFilter = typeof result?.key === "number"; // 1=PreBooking, 2=Online, 3=COD
     if (onSeletedItem === result.key) {
       dispatch(onGlobalPaymentSearch(null));
       dispatch(onUpdateOpenStore(false));
       setOnSelectedItem(null);
       dispatch(onSearchGlobal(null));
       dispatch(onGlobalCategorySearch(null));
+      if (isPaymentFilter) {
+        setSelectedCategory([]);
+      }
     } else {
       dispatch(onGlobalPaymentSearch(result?.key));
       setOnSelectedItem(result.key);
+      if (isPaymentFilter) {
+        // Payment filter should win over other filters
+        dispatch(onSearchGlobal(null));
+        dispatch(onGlobalCategorySearch(null));
+        dispatch(onUpdateOpenStore(false));
+        setSelectedCategory([]);
+      }
     }
     if (result?.key === "Hospitals") {
       onSearchByCategory(20);

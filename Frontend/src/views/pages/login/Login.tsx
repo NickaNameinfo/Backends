@@ -26,12 +26,15 @@ const Login = () => {
     formState: { errors },
   } = useForm();
   const formData = watch();
-  const [login] = useLoginMutation();
+  const [login, { isLoading: isLoggingIn }] = useLoginMutation();
   const dispatch = useDispatch();
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
 
   const isOpenRegister = useAppSelector(
     (state) => state.globalConfig.isOpenRegister
+  );
+  const isOpenRegisterSuccessModal = useAppSelector(
+    (state) => state.globalConfig.isOpenRegisterSuccessModal
   );
   const isOpenLogin = useAppSelector((state) => state.globalConfig.isOpenLogin);
   const isOpenForget = useAppSelector((state) => state.globalConfig.isOpenForget);
@@ -56,16 +59,28 @@ const Login = () => {
 
   const onSubmit = async () => {
     try {
-      const result = await login(formData);
+      const payload = {
+        email: String(formData?.email ?? "").trim(),
+        password: String(formData?.password ?? "").trim(),
+      };
+      const result = await login(payload);
       if (result?.data?.success) {
         authenticate(result?.data, () => {
           dispatch(onOpenLogin(false));
           dispatch(updateLoginDetails(result?.data));
           location.reload()
         });
+        return;
       }
+      const msg =
+        result?.error?.data?.message ||
+        (Array.isArray(result?.error?.data?.errors) ? result.error.data.errors.join(", ") : null) ||
+        result?.error?.error ||
+        "Login failed";
+      alert(msg);
     } catch (error) {
       console.log(error, "Error");
+      alert("Login failed");
     }
   };
 
@@ -112,7 +127,7 @@ const Login = () => {
                     rules={{ required: "Please select a password" }} // Validation rule with custom message
                     render={({ field }) => (
                       <InputNextUI
-                        type="text"
+                        type="password"
                         label="Password"
                         {...field}
                         errorMessage={errors.password?.message}
@@ -140,7 +155,7 @@ const Login = () => {
                   <Link
                     className="cursor-pointer p-0 m-0 #7358D7 max-w-md"
                     style={{
-                      color: "#4C86F9",
+                      color: "var(--brand-primary)",
                     }}
                     // color="foreground"
                     onPress={() => onClickForget ()}
@@ -155,10 +170,11 @@ const Login = () => {
                   type="submit"
                   size="sm"
                   className="w-full  font-normal "
+                  isDisabled={isLoggingIn}
                   style={{
                     padding: 0,
                     margin: 0,
-                    background: "#4C86F9",
+                    background: "var(--brand-primary)",
                     color: "#FFFFFF",
                   }}
                 >
@@ -184,7 +200,7 @@ const Login = () => {
               <Link
                 className="cursor-pointer font-medium p-0 m-0"
                 style={{
-                  color: "#4C86F9",
+                  color: "var(--brand-primary)",
                 }}
                 onPress={() => onClickRegister()}
                 size="sm"
@@ -195,7 +211,7 @@ const Login = () => {
           </div>
         }
       />
-      {isOpenRegister && <Register />}
+      {(isOpenRegister || isOpenRegisterSuccessModal) && <Register />}
       {isOpenForget && <ForgotPassword />}
     </div>
   );

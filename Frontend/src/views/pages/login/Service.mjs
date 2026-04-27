@@ -46,8 +46,29 @@ export const AuthApi = createApi({
         body
       }),
     }),
+    requestPasswordReset: builder.mutation({
+      query: (body) => ({
+        url: `/auth/password/reset/request`,
+        method: "POST",
+        body,
+      }),
+    }),
+    confirmPasswordReset: builder.mutation({
+      query: (body) => ({
+        url: `/auth/password/reset/confirm`,
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
-export const { useRegisterMutation, useLoginMutation, useUpdatUserMutation, useUploadFileMutation } = AuthApi;
+export const {
+  useRegisterMutation,
+  useLoginMutation,
+  useUpdatUserMutation,
+  useUploadFileMutation,
+  useRequestPasswordResetMutation,
+  useConfirmPasswordResetMutation,
+} = AuthApi;
 export const { endpoints } = AuthApi;

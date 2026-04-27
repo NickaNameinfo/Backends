@@ -74,6 +74,24 @@ export const _nav = [
                 link: "/Stores/List",
                 icons: <IconHome />,
               },
+              {
+                menuType: "single",
+                name: "Trash",
+                key: "Trash",
+                link: "/Stores/Trash",
+                icons: <IconHome />,
+              },
+            ]
+            : []),
+          ...(tempRole === "0"
+            ? [
+              {
+                menuType: "single",
+                name: "Store subscriptions",
+                key: "StoreSubscriptions",
+                link: "/Dashboard/Stores/Subscriptions",
+                icons: <IconHome />,
+              },
             ]
             : []),
         ],
@@ -357,6 +375,13 @@ export const _nav = [
     name: "Reports",
     key: "Reports",
     link: "/Reports",
+    icons: <IconHome />,
+  },
+  {
+    menuType: "single",
+    name: "Store Reports",
+    key: "StoreReports",
+    link: "/Dashboard/StoreReports",
     icons: <IconHome />,
   },
   {

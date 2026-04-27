@@ -3,25 +3,26 @@
  * Note: HttpOnly flag cannot be set from JavaScript (requires backend)
  * @param {string} name - Cookie name
  * @param {string} value - Cookie value
- * @param {number} minute - Expiration time in minutes
- * @param {boolean} isSecure - Use Secure flag (HTTPS only)
+ * @param {number|Date} expires - Expiration in minutes OR a Date object
+ * @param {boolean} isSecure - Use Secure flag (HTTPS only). Default: auto based on protocol
  * @param {string} sameSite - SameSite attribute ('Strict', 'Lax', or 'None')
  */
-export function setCookie(name, value, minute, isSecure = true, sameSite = 'Strict') {
-  var expires = "";
-  if (minute) {
-    var date = new Date();
-    expires =
-      "; expires=" +
-      new Date(date.setMinutes(date.getMinutes() + minute)).toUTCString();
+export function setCookie(name, value, expires, isSecure = (window.location.protocol === 'https:'), sameSite = 'Lax') {
+  let expiresAttr = "";
+  if (expires instanceof Date) {
+    expiresAttr = "; expires=" + expires.toUTCString();
+  } else if (typeof expires === "number" && Number.isFinite(expires) && expires > 0) {
+    const date = new Date();
+    date.setMinutes(date.getMinutes() + expires);
+    expiresAttr = "; expires=" + date.toUTCString();
   }
   
   // Build cookie string with security flags
   // Note: HttpOnly must be set by backend - cannot be set from JavaScript
-  var cookieString = name + "=" + (value || "") + expires + "; path=/";
+  let cookieString = name + "=" + (value || "") + expiresAttr + "; path=/";
   
   // Add Secure flag if HTTPS (or if explicitly requested)
-  if (isSecure && (window.location.protocol === 'https:' || isSecure === true)) {
+  if (isSecure && window.location.protocol === 'https:') {
     cookieString += "; Secure";
   }
   
@@ -45,6 +46,6 @@ export function getCookie(name) {
 }
 
 export function eraseCookie(name) {
-  // Erase cookie with security flags
-  document.cookie = name + "=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; Secure; SameSite=Strict";
+  // Erase cookie (try without Secure so it also clears http cookies)
+  document.cookie = name + "=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax";
 }

@@ -78,7 +78,7 @@ export const ProductDetail = (props: ProductDetailProps) => {
   const onRefresh = useAppSelector((state) => state.globalConfig.onRefreshCart);
   const notify = (value) => toast(value);
   const MySwal = withReactContent(Swal);
-  const userId = getCookie("id");
+  const userId = getCookie("id") || localStorage.getItem("id");
   const {
     data: storeDetails,
     error,
@@ -253,6 +253,14 @@ export const ProductDetail = (props: ProductDetailProps) => {
     const product = props?.item?.product || props?.item;
     const priceToUse = currentPrice > 0 ? currentPrice : (Number(product?.total) || Number(product?.price) || Number(props?.item?.price) || 0);
 
+    const storeIdToUse =
+      props?.item?.supplierId ??
+      props?.item?.storeId ??
+      props?.item?.store_id ??
+      props?.item?.product?.createdId ??
+      props?.item?.product?.supplierId ??
+      "";
+
     let tempCartValue = {
       productId: props?.item?.product?.id
         ? props?.item?.product?.id
@@ -272,6 +280,8 @@ export const ProductDetail = (props: ProductDetailProps) => {
       photo: props?.item?.product?.photo
         ? props?.item?.product?.photo
         : props?.item?.photo,
+      // Critical: storeId is used for Shiprocket pickup pincode
+      storeId: storeIdToUse,
       size: selectedSize || "",
       weight: selectedWeight || "",
     };

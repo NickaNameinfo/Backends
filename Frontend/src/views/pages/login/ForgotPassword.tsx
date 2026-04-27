@@ -28,7 +28,7 @@ import { useDispatch } from "react-redux";
 import Login from "./Login";
 import { useNavigate } from "react-router-dom";
 import { Otp } from "./Otp";
-import { useUpdatUserMutation } from "./Service.mjs";
+import { useConfirmPasswordResetMutation, useRequestPasswordResetMutation } from "./Service.mjs";
 
 
 export const ForgotPassword = () => {
@@ -43,42 +43,58 @@ export const ForgotPassword = () => {
   } = useForm();
   const formData = watch();
 
-  const [updateUser] = useUpdatUserMutation();
+  const [requestReset, requestResetState] = useRequestPasswordResetMutation();
+  const [confirmReset, confirmResetState] = useConfirmPasswordResetMutation();
 
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
-  const [otpValue, setOtpValues] = useState(null);
   const [enteredOtp, setEnteredOpt] = React.useState(null);
-  const [isEnableNewPassword, setIsEnableNewPassword] = React.useState(false);
+  const [step, setStep] = React.useState<"email" | "confirm">("email");
 
   const isOpenLogin = useAppSelector((state) => state.globalConfig.isOpenLogin);
   const isOpenForget = useAppSelector(
     (state) => state.globalConfig.isOpenForget
   );
 
-  const onSubmit = async (data) => {
+  const onSubmit = async () => {
     try {
-      if(!formData?.password){
-        if (otpValue) {
-          if (otpValue === Number(enteredOtp?.join(""))) {
-            setIsEnableNewPassword(true)
-          } else {
-            alert("Please enter otp sent your mail id");
-          }
-        } else {
-          setOtpValues(9078);
+      if (step === "email") {
+        const email = (formData?.email ?? "").toString().trim();
+        if (!email) {
+          alert("Please enter your email");
+          return;
         }
-      }else{
-        try{
-          let result = await updateUser(data)
-          console.log(result, "resultrr5234")
-          if(result?.data?.success){
-            onClickLogin()
-          }
-        }catch(error){
-          console.log(error, "errrorr")
+        const result = await requestReset({ email });
+        if ("error" in result && result.error) {
+          const err: any = result.error;
+          alert(err?.data?.message || "Could not send OTP. Please try again.");
+          return;
         }
-        
+        setStep("confirm");
+        return;
       }
+
+      // confirm
+      const email = (formData?.email ?? "").toString().trim();
+      const otp = Array.isArray(enteredOtp) ? enteredOtp.join("") : "";
+      const password = (formData?.password ?? "").toString();
+      if (!otp || otp.length < 4) {
+        alert("Please enter OTP");
+        return;
+      }
+      if (!password || password.length < 5) {
+        alert("Password must be at least 5 characters");
+        return;
+      }
+
+      const result = await confirmReset({ email, otp, password });
+      if ("error" in result && result.error) {
+        const err: any = result.error;
+        alert(err?.data?.message || "Could not reset password. Please try again.");
+        return;
+      }
+
+      // success
+      onClickLogin();
     } catch (error) {
       console.log(error, "Error");
     }
@@ -87,6 +103,7 @@ export const ForgotPassword = () => {
 
   const onCloseModal = () => {
     onClose();
+    setStep("email");
     dispatch(onOpenForget(false));
   };
 
@@ -94,6 +111,8 @@ export const ForgotPassword = () => {
     dispatch(onOpenResigter(false));
     dispatch(onOpenLogin(true));
     dispatch(onOpenForget(false));
+    setStep("email");
+    reset();
   };
 
   return (
@@ -101,63 +120,90 @@ export const ForgotPassword = () => {
       <ModalUI
         isOpen={isOpenForget}
         onOpenChange={onCloseModal}
-        heading={"Forgot Password "}
+        heading={"Reset password"}
         headerIcon={<IconRegisterSVG width="200px" height="155px" />}
         content={
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="px-3 m-0">
-              <div className="mt-2">
-              <Controller
-                    name="email" // Changed to reflect a text input
-                    control={control}
-                    rules={{ required: "Please select a user name" }} // Validation rule with custom message
-                    render={({ field }) => (
-                      <InputNextUI
-                        type="text"
-                        label="Email"
-                        {...field}
-                        errorMessage={errors.email?.message}
-                      />
-                    )}
-                  />
+              <div className="mt-1 rounded-2xl bg-white/70 backdrop-blur-md border border-black/5 p-4">
+                <p className="text-sm font-medium text-black/70 mb-2">
+                  {step === "email"
+                    ? "Enter your email to receive an OTP"
+                    : "Enter the OTP and set a new password"}
+                </p>
+
+                <Controller
+                  name="email"
+                  control={control}
+                  rules={{ required: "Email is required" }}
+                  render={({ field }) => (
+                    <InputNextUI
+                      type="email"
+                      label="Email address"
+                      className="w-full"
+                      {...field}
+                      errorMessage={errors.email?.message}
+                      isReadOnly={step !== "email"}
+                    />
+                  )}
+                />
+
+                {step === "confirm" && (
+                  <div className="mt-3">
+                    <Otp enteredOtp={(value) => setEnteredOpt(value)} />
+                  </div>
+                )}
+
+                {step === "confirm" && (
+                  <div className="mt-3">
+                    <Controller
+                      name="password"
+                      control={control}
+                      rules={{ required: "Please enter new password" }}
+                      render={({ field }) => (
+                        <InputNextUI
+                          type="password"
+                          label="New password"
+                          className="w-full"
+                          {...field}
+                          errorMessage={errors.password?.message}
+                        />
+                      )}
+                    />
+                  </div>
+                )}
               </div>
-              {isEnableNewPassword && (
-                <div className="mt-2">
-                 <Controller
-                    name="password" // Changed to reflect a text input
-                    control={control}
-                    rules={{ required: "Please enter new password" }} // Validation rule with custom message
-                    render={({ field }) => (
-                      <InputNextUI
-                        type="text"
-                        label="New Password"
-                        {...field}
-                        errorMessage={errors.password?.message}
-                      />
-                    )}
-                  />
-                </div>
-              )}
-              {otpValue && !isEnableNewPassword && (
-                <div className="my-2">
-                  <Otp enteredOtp={(value) => setEnteredOpt(value)} />
-                </div>
-              )}
-              <div className="w-full justify-center pt-5">
+
+              <div className="w-full justify-center pt-4">
                 <Button
                   size="sm"
                   type="submit"
-                  className="w-full  font-normal"
+                  className="w-full font-semibold rounded-xl"
+                  isDisabled={requestResetState.isLoading || confirmResetState.isLoading}
                   style={{
                     padding: 0,
                     margin: 0,
-                    background: "#4C86F9",
+                    background: "var(--gradient-primary)",
                     color: "#FFFFFF",
                   }}
                 >
-                  {otpValue ? "Submit" : "Change Password"}
+                  {step === "email" ? "Send OTP" : "Update password"}
                   <IconLogin fill="white" />
                 </Button>
+                {step === "confirm" ? (
+                  <button
+                    type="button"
+                    className="w-full mt-2 text-sm font-semibold"
+                    style={{ color: "var(--brand-primary)" }}
+                    onClick={() => {
+                      setStep("email");
+                      setEnteredOpt(null);
+                      setValue("password", "");
+                    }}
+                  >
+                    Resend OTP
+                  </button>
+                ) : null}
               </div>
             </div>
           </form>
@@ -176,7 +222,7 @@ export const ForgotPassword = () => {
               <Link
                 className="cursor-pointer font-medium p-0 m-0"
                 style={{
-                  color: "#4C86F9",
+                  color: "var(--brand-primary)",
                 }}
                 onPress={() => onClickLogin()}
                 size="sm"
